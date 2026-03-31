@@ -1,58 +1,214 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <title>CS 440 Project 1 – DOOM64 Style Map</title>
-  <link rel="stylesheet" href="style.css">
+    <title>DOOM64 - CS 440 Virtual Worlds</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #000;
+            overflow: hidden;
+            font-family: 'Courier New', monospace;
+        }
+        canvas { display: block; }
+
+        #hud {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 14px;
+            pointer-events: none;
+            color: #ff4400;
+            font-size: 12px;
+            text-shadow: 0 0 6px #ff4400;
+            z-index: 10;
+        }
+        #hud-left { display: flex; flex-direction: column; gap: 3px; }
+        #hud-right { display: flex; flex-direction: column; gap: 3px; text-align: right; }
+
+        #crosshair {
+            position: fixed;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            color: #ff4400;
+            font-size: 22px;
+            pointer-events: none;
+            text-shadow: 0 0 6px #ff4400;
+        }
+
+        #bar {
+            position: fixed;
+            bottom: 40px; left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 8px;
+        }
+        .sbtn {
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid #ff4400;
+            color: #ff4400;
+            padding: 5px 14px;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            transition: background 0.15s;
+        }
+        .sbtn:hover { background: rgba(255, 68, 0, 0.25); }
+        .sbtn.on { background: #ff4400; color: #000; }
+
+        #overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            color: #ff4400;
+            font-family: 'Courier New', monospace;
+        }
+        #overlay h1 {
+            font-size: 56px;
+            letter-spacing: 12px;
+            text-shadow: 0 0 28px #ff4400;
+            margin-bottom: 4px;
+        }
+        #overlay h2 {
+            font-size: 13px;
+            letter-spacing: 4px;
+            color: #ff8844;
+            margin-bottom: 34px;
+        }
+        #overlay table { font-size: 12px; border-collapse: collapse; margin-bottom: 28px; }
+        #overlay td { padding: 2px 14px; color: #ff8844; }
+        #overlay td:first-child { color: #ffcc88; text-align: right; font-weight: bold; }
+
+        #gobtn {
+            border: 2px solid #ff4400;
+            background: none;
+            color: #ff4400;
+            padding: 10px 40px;
+            font-size: 15px;
+            letter-spacing: 4px;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+        #gobtn:hover { background: #ff4400; color: #000; }
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 10px #ff440022; }
+            50%       { box-shadow: 0 0 28px #ff4400bb; }
+        }
+    </style>
+
+    <script id="vertex-shader" type="x-shader/x-vertex">
+        attribute vec3 aPos;
+        attribute vec3 aNorm;
+        attribute vec3 aCol;
+
+        uniform mat4 uMVP;
+        uniform mat4 uModel;
+        uniform mat3 uNM;
+        uniform int  uMode;
+
+        varying vec3 vCol;
+        varying vec3 vNorm;
+        varying vec3 vFrag;
+        varying vec3 vFlatCol;
+
+        void main() {
+            gl_Position = uMVP * vec4(aPos, 1.0);
+            vFrag       = (uModel * vec4(aPos, 1.0)).xyz;
+            vNorm       = normalize(uNM * aNorm);
+            vCol        = aCol;
+
+            // Flat shading: diffuse computed per-vertex using face normal
+            vec3 L   = normalize(vec3(0.4, 1.0, 0.5));
+            float d  = max(dot(vNorm, L), 0.0);
+            vFlatCol = aCol * (0.22 + 0.78 * d);
+        }
+    </script>
+
+    <script id="fragment-shader" type="x-shader/x-fragment">
+        precision mediump float;
+
+        varying vec3 vCol;
+        varying vec3 vNorm;
+        varying vec3 vFrag;
+        varying vec3 vFlatCol;
+
+        uniform int  uMode;
+        uniform vec3 uLightPos;
+        uniform vec3 uEye;
+
+        void main() {
+            if (uMode == 0) {
+                // Wireframe
+                gl_FragColor = vec4(min(vCol * 1.6, vec3(1.0)), 1.0);
+            } else if (uMode == 1) {
+                // Flat shading
+                gl_FragColor = vec4(vFlatCol, 1.0);
+            } else {
+                // Phong shading
+                vec3 N   = normalize(vNorm);
+                vec3 L   = normalize(uLightPos - vFrag);
+                vec3 V   = normalize(uEye - vFrag);
+                vec3 R   = reflect(-L, N);
+                float dif = max(dot(N, L), 0.0);
+                float spe = pow(max(dot(V, R), 0.0), 48.0) * 0.45;
+                vec3 col  = vCol * 0.22 + vCol * dif + vec3(spe);
+                gl_FragColor = vec4(col, 1.0);
+            }
+        }
+    </script>
 </head>
 <body>
+    <canvas id="gl-canvas" width="800" height="600"></canvas>
 
-  <canvas id="c"></canvas>
-
-  <!-- HUD -->
-  <div id="hud">
-    <div id="hud-left">
-      <span id="hpos">POS: 0.0, 0.0, 0.0</span>
-      <span id="hang">YAW: 0°  PITCH: 0°  ROLL: 0°</span>
-      <span id="hfov">FOV: 75°  NEAR: 0.15  FAR: 250</span>
-      <span id="hspd">SPEED: 5.0</span>
+    <div id="hud">
+        <div id="hud-left">
+            <span id="hpos">POS: 0.0, 0.0, 0.0</span>
+            <span id="hang">YAW: 0°  PITCH: 0°  ROLL: 0°</span>
+            <span id="hfov">FOV: 75°  NEAR: 0.15  FAR: 250</span>
+            <span id="hspd">SPEED: 5.0</span>
+        </div>
+        <div id="hud-right">
+            <span id="hshd">SHADING: FLAT</span>
+            <span id="hfps">FPS: --</span>
+        </div>
     </div>
-    <div id="hud-right">
-      <span id="hshd">SHADING: FLAT</span>
-      <span id="hfps">FPS: --</span>
+
+    <div id="crosshair">+</div>
+
+    <div id="bar">
+        <button class="sbtn"    onclick="setSh(0)">WIREFRAME</button>
+        <button class="sbtn on" onclick="setSh(1)">FLAT</button>
+        <button class="sbtn"    onclick="setSh(2)">SMOOTH</button>
     </div>
-  </div>
 
-  <!-- Crosshair -->
-  <div id="crosshair">+</div>
+    <div id="overlay">
+        <h1>DOOM64</h1>
+        <h2>CS 440 &middot; VIRTUAL WORLDS</h2>
+        <table>
+            <tr><td>W A S D</td>       <td>Move / Strafe</td></tr>
+            <tr><td>MOUSE</td>         <td>Look (Yaw + Pitch)</td></tr>
+            <tr><td>Q / E</td>         <td>Roll left / right</td></tr>
+            <tr><td>R / F</td>         <td>Fly up / down</td></tr>
+            <tr><td>SHIFT</td>         <td>Sprint</td></tr>
+            <tr><td>, &nbsp;/&nbsp; .</td><td>Speed down / up</td></tr>
+            <tr><td>&#8593; / &#8595;</td><td>FOV zoom in / out</td></tr>
+            <tr><td>&#8592; / &#8594;</td><td>Yaw (keyboard)</td></tr>
+            <tr><td>[ / ]</td>         <td>Near / Far plane</td></tr>
+            <tr><td>Z / X</td>         <td>Left / right view shift</td></tr>
+            <tr><td>1 / 2 / 3</td>     <td>Wireframe / Flat / Smooth</td></tr>
+        </table>
+        <button id="gobtn" onclick="startGame()">[ CLICK TO ENTER ]</button>
+    </div>
 
-  <!-- Shading mode buttons -->
-  <div id="bar">
-    <button class="sbtn"    onclick="setSh(0)">WIREFRAME</button>
-    <button class="sbtn on" onclick="setSh(1)">FLAT</button>
-    <button class="sbtn"    onclick="setSh(2)">SMOOTH</button>
-  </div>
-
-  <!-- Start overlay / controls list -->
-  <div id="overlay">
-    <h1>DOOM64</h1>
-    <h2>CS 440 &middot; VIRTUAL WORLDS</h2>
-    <table>
-      <tr><td>W A S D</td>       <td>Move / Strafe</td></tr>
-      <tr><td>MOUSE</td>         <td>Look (Yaw + Pitch)</td></tr>
-      <tr><td>Q / E</td>         <td>Roll left / right</td></tr>
-      <tr><td>R / F</td>         <td>Fly up / down</td></tr>
-      <tr><td>SHIFT</td>         <td>Sprint</td></tr>
-      <tr><td>, &nbsp;/&nbsp; .</td><td>Speed down / up</td></tr>
-      <tr><td>&#8593; / &#8595;</td><td>FOV zoom in / out</td></tr>
-      <tr><td>&#8592; / &#8594;</td><td>Yaw (keyboard)</td></tr>
-      <tr><td>[ / ]</td>         <td>Near / Far plane</td></tr>
-      <tr><td>Z / X</td>         <td>Left / right view shift</td></tr>
-      <tr><td>1 / 2 / 3</td>     <td>Wireframe / Flat / Smooth</td></tr>
-    </table>
-    <button id="gobtn" onclick="startGame()">[ CLICK TO ENTER ]</button>
-  </div>
-
-  <script src="main.js"></script>
+    <script src="common.js"></script>
+    <script src="webgl-utils.js"></script>
+    <script src="initShaders.js"></script>
+    <script src="main.js"></script>
 </body>
 </html>
