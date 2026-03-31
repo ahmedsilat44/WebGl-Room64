@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CS 440 Project 1 – DOOM64 Style Map</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <canvas id="c"></canvas>
+
+  <!-- HUD -->
+  <div id="hud">
+    <div id="hud-left">
+      <span id="hpos">POS: 0.0, 0.0, 0.0</span>
+      <span id="hang">YAW: 0°  PITCH: 0°  ROLL: 0°</span>
+      <span id="hfov">FOV: 75°  NEAR: 0.15  FAR: 250</span>
+      <span id="hspd">SPEED: 5.0</span>
+    </div>
+    <div id="hud-right">
+      <span id="hshd">SHADING: FLAT</span>
+      <span id="hfps">FPS: --</span>
+    </div>
+  </div>
+
+  <!-- Crosshair -->
+  <div id="crosshair">+</div>
+
+  <!-- Shading mode buttons -->
+  <div id="bar">
+    <button class="sbtn"    onclick="setSh(0)">WIREFRAME</button>
+    <button class="sbtn on" onclick="setSh(1)">FLAT</button>
+    <button class="sbtn"    onclick="setSh(2)">SMOOTH</button>
+  </div>
+
+  <!-- Start overlay / controls list -->
+  <div id="overlay">
+    <h1>DOOM64</h1>
+    <h2>CS 440 &middot; VIRTUAL WORLDS</h2>
+    <table>
+      <tr><td>W A S D</td>       <td>Move / Strafe</td></tr>
+      <tr><td>MOUSE</td>         <td>Look (Yaw + Pitch)</td></tr>
+      <tr><td>Q / E</td>         <td>Roll left / right</td></tr>
+      <tr><td>R / F</td>         <td>Fly up / down</td></tr>
+      <tr><td>SHIFT</td>         <td>Sprint</td></tr>
+      <tr><td>, &nbsp;/&nbsp; .</td><td>Speed down / up</td></tr>
+      <tr><td>&#8593; / &#8595;</td><td>FOV zoom in / out</td></tr>
+      <tr><td>&#8592; / &#8594;</td><td>Yaw (keyboard)</td></tr>
+      <tr><td>[ / ]</td>         <td>Near / Far plane</td></tr>
+      <tr><td>Z / X</td>         <td>Left / right view shift</td></tr>
+      <tr><td>1 / 2 / 3</td>     <td>Wireframe / Flat / Smooth</td></tr>
+    </table>
+    <button id="gobtn" onclick="startGame()">[ CLICK TO ENTER ]</button>
+  </div>
+
+  <script src="main.js"></script>
+</body>
+</html>

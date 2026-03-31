@@ -1,0 +1,155 @@
+/* ── Reset ─────────────────────────────────────────────────────────────────── */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background: #000;
+  overflow: hidden;
+  font-family: 'Courier New', monospace;
+}
+
+canvas {
+  display: block;
+}
+
+/* ── HUD ───────────────────────────────────────────────────────────────────── */
+#hud {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 14px;
+  pointer-events: none;
+  color: #ff4400;
+  font-size: 12px;
+  text-shadow: 0 0 6px #ff4400;
+  z-index: 10;
+}
+
+#hud-left {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+#hud-right {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  text-align: right;
+}
+
+/* ── Crosshair ─────────────────────────────────────────────────────────────── */
+#crosshair {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #ff4400;
+  font-size: 22px;
+  pointer-events: none;
+  text-shadow: 0 0 6px #ff4400;
+}
+
+/* ── Shading buttons bar ───────────────────────────────────────────────────── */
+#bar {
+  position: fixed;
+  bottom: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+}
+
+.sbtn {
+  background: rgba(0, 0, 0, 0.8);
+  border: 1px solid #ff4400;
+  color: #ff4400;
+  padding: 5px 14px;
+  cursor: pointer;
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  transition: background 0.15s;
+}
+
+.sbtn:hover {
+  background: rgba(255, 68, 0, 0.25);
+}
+
+.sbtn.on {
+  background: #ff4400;
+  color: #000;
+}
+
+/* ── Start overlay ─────────────────────────────────────────────────────────── */
+#overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.9);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  color: #ff4400;
+  font-family: 'Courier New', monospace;
+}
+
+#overlay h1 {
+  font-size: 56px;
+  letter-spacing: 12px;
+  text-shadow: 0 0 28px #ff4400;
+  margin-bottom: 4px;
+}
+
+#overlay h2 {
+  font-size: 13px;
+  letter-spacing: 4px;
+  color: #ff8844;
+  margin-bottom: 34px;
+}
+
+#overlay table {
+  font-size: 12px;
+  border-collapse: collapse;
+  margin-bottom: 28px;
+}
+
+#overlay td {
+  padding: 2px 14px;
+  color: #ff8844;
+}
+
+#overlay td:first-child {
+  color: #ffcc88;
+  text-align: right;
+  font-weight: bold;
+}
+
+/* ── Start button ──────────────────────────────────────────────────────────── */
+#gobtn {
+  border: 2px solid #ff4400;
+  background: none;
+  color: #ff4400;
+  padding: 10px 40px;
+  font-size: 15px;
+  letter-spacing: 4px;
+  cursor: pointer;
+  font-family: 'Courier New', monospace;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+#gobtn:hover {
+  background: #ff4400;
+  color: #000;
+}
+
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 10px #ff440022; }
+  50%       { box-shadow: 0 0 28px #ff4400bb; }
+}
