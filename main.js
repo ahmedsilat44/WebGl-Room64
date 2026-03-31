@@ -42,6 +42,7 @@ var uMVP, uModel, uNM, uMode, uLightPos, uEye;
 //   gI      - flat int array:   triangle indices [i0,i1,i2, i3,i4,i5, ...]
 //   gBase   - running count of vertices added to current batch (for index offsetting)
 var batches = [];
+var gunBatch = null;
 var gP = [], gN = [], gC = [], gI = [], gBase = 0;
 
 // ---------------------------------------------------------------------------
@@ -629,6 +630,85 @@ function buildScene() {
 
 
 // ---------------------------------------------------------------------------
+// buildGun()
+// ---------------------------------------------------------------------------
+// Builds a first-person shotgun/rifle model from boxes and quads.
+// The gun is built in its own local coordinate system (small scale) and
+// stored in a separate batch (gunBatch). It is drawn as a screen-space
+// overlay after the scene with depth testing disabled.
+//
+// The model roughly resembles a Doom-style shotgun:
+//   - Long barrel (dark metal)
+//   - Receiver/body (dark gunmetal)
+//   - Grip/handle (brown wood)
+//   - Pump/foregrip (wood)
+//   - Muzzle opening (black)
+//
+// Coordinates are in a local space where:
+//   X = left/right, Y = up/down, Z = forward (toward screen)
+//   Origin is roughly at the grip/trigger area
+function buildGun() {
+    gP = []; gN = []; gC = []; gI = []; gBase = 0;
+
+    // Gun is viewed from ~35 degrees above and slightly behind.
+    // Barrel runs along -Z (into the screen). We primarily see:
+    //   - the TOP surface of the barrel and receiver
+    //   - the LEFT/RIGHT sides for perspective depth
+    //   - the grip partially visible at bottom (gets cut off by screen edge)
+
+    var metal  = [0.15, 0.15, 0.17];   // very dark gunmetal body
+    var metal2 = [0.28, 0.28, 0.33];   // mid gunmetal top/side highlights
+    var wood   = [0.42, 0.24, 0.08];   // warm brown wood grip/stock
+    var wood2  = [0.35, 0.18, 0.06];   // darker wood pump
+    var black  = [0.05, 0.05, 0.05];   // muzzle, details
+    var steel  = [0.55, 0.55, 0.60];   // steel sight/rib
+
+    // Model built so barrel runs along -Z (muzzle at z=-0.80, butt at z=+0.55).
+    // With rotateY(-30) the barrel swings to the left on screen and we see the
+    // gun's right side — matching the reference image (barrel pointing upper-left,
+    // right flank of receiver visible, grip off bottom-right of screen).
+
+    // ---- BARREL — long thin hex-ish box running full length ----
+    addBox(-0.04, 0.02, -0.80,  0.08, 0.07, 0.82, metal, metal2, metal);
+
+    // Top sight rib (thin raised strip)
+    addBox(-0.012, 0.09, -0.78,  0.024, 0.018, 0.76, steel, steel, steel);
+
+    // Front bead sight
+    addBox(-0.014, 0.108, -0.77,  0.028, 0.020, 0.028, steel, steel, steel);
+
+    // ---- PUMP / FOREGRIP (wood, under barrel mid-section) ----
+    addBox(-0.052, -0.01, -0.60,  0.104, 0.055, 0.24, wood2, wood2, wood2);
+
+    // ---- RECEIVER — wider, taller block, centre of the gun ----
+    addBox(-0.060, -0.04, -0.04,  0.12, 0.14, 0.30, metal, metal2, metal);
+
+    // Ejection port cutout (darker panel on right side of receiver)
+    addBox( 0.058, -0.01, -0.03,  0.008, 0.07, 0.16, black, black, black);
+
+    // ---- TRIGGER GUARD ----
+    addBox(-0.028, -0.10,  0.00,  0.056, 0.010, 0.14, black, black, black);
+    addBox(-0.028, -0.18,  0.00,  0.056, 0.080, 0.01, black, black, black);
+    addBox(-0.028, -0.18,  0.13,  0.056, 0.080, 0.01, black, black, black);
+
+    // ---- PISTOL GRIP ----
+    addBox(-0.038, -0.42,  0.02,  0.076, 0.30, 0.09, wood, wood, wood);
+
+    // ---- STOCK — thick wood box extending back toward player ----
+    addBox(-0.048,  0.00,  0.26,  0.096, 0.09, 0.28, wood, wood, wood);
+
+    // Stock buttplate
+    addBox(-0.052, -0.01,  0.54,  0.104, 0.10, 0.018, metal, metal, metal);
+
+    // ---- MUZZLE (dark face at tip) ----
+    addBox(-0.042,  0.018, -0.82,  0.084, 0.074, 0.018, black, black, black);
+
+    flushBatch();
+    gunBatch = batches.pop();
+}
+
+
+// ---------------------------------------------------------------------------
 // setSh(m)
 // ---------------------------------------------------------------------------
 // Switches the active shading mode and updates the HUD buttons to reflect it.
@@ -873,6 +953,38 @@ function render(now) {
         drawBatch(batches[i]);
     }
 
+    // ---- Draw gun overlay (FPS weapon) ----
+    if (gunBatch) {
+        gl.disable(gl.DEPTH_TEST);
+        gl.clear(gl.DEPTH_BUFFER_BIT);
+
+        // Gun model matrix: keep the weapon low-right, but rotate it so the
+        // muzzle converges toward the screen-centre crosshair instead of
+        // drifting left across the bottom of the screen.
+        var gunM = identity();
+        gunM = mult(gunM, translate(0.35, -0.50, -0.70));
+        gunM = mult(gunM, rotateZ(0));
+        gunM = mult(gunM, rotateX(0));
+        gunM = mult(gunM, rotateY(4));
+        gunM = mult(gunM, scalem(1.10, 1.10, 1.10));
+
+        // Gun projection: 70-degree FOV perspective matching human eye weapon view
+        var gunProj = frustum(-0.13 * asp, 0.13 * asp, -0.13, 0.13, 0.13, 10.0);
+        var gunMVP  = mult(gunProj, gunM);
+        var gunNM   = mat3Normal(gunM);
+
+        gl.uniformMatrix4fv(uMVP,   false, new Float32Array(gunMVP));
+        gl.uniformMatrix4fv(uModel, false, new Float32Array(gunM));
+        gl.uniformMatrix3fv(uNM,    false, gunNM);
+        gl.uniform1i(uMode, shadingMode === 0 ? 0 : 2);
+        gl.uniform3f(uLightPos, 0.5, 2.0, 1.0);
+        gl.uniform3f(uEye, 0, 0, 0);
+
+        drawBatch(gunBatch);
+
+        gl.enable(gl.DEPTH_TEST);
+    }
+
     // HUD update
     document.getElementById('hpos').textContent =
         'POS: ' + cam.x.toFixed(1) + ', ' + cam.y.toFixed(1) + ', ' + cam.z.toFixed(1);
@@ -974,6 +1086,7 @@ window.onload = function init() {
 
     // Build all geometry
     buildScene();
+    buildGun();
 
     // Input handlers
     document.addEventListener('keydown', function(e) { keys[e.code] = true; });
