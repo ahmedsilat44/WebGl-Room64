@@ -60,22 +60,22 @@ var gP = [], gN = [], gC = [], gI = [], gBase = 0;
 //   plat       - concrete grey for raised side platforms
 //   barrel/lid - steel tones for the industrial barrels
 var C = {
-    floor:  [0.13, 0.12, 0.10],
-    ceil:   [0.07, 0.07, 0.09],
-    w1:     [0.24, 0.14, 0.09],
-    w2:     [0.16, 0.16, 0.20],
-    w3:     [0.19, 0.09, 0.07],
-    w4:     [0.10, 0.15, 0.10],
-    col:    [0.22, 0.15, 0.11],
-    cap:    [0.30, 0.20, 0.13],
-    acc:    [0.55, 0.08, 0.04],
-    lava:   [0.72, 0.28, 0.01],
-    dark:   [0.05, 0.05, 0.06],
-    trim:   [0.33, 0.23, 0.16],
-    step:   [0.18, 0.08, 0.06],
-    plat:   [0.20, 0.18, 0.16],
-    barrel: [0.35, 0.35, 0.38],
-    lid:    [0.20, 0.20, 0.22]
+    floor:  [0.35, 0.33, 0.30],   // dark grey-brown cobblestone
+    ceil:   [0.42, 0.40, 0.37],   // medium grey stone
+    w1:     [0.45, 0.42, 0.38],   // grey stone wall
+    w2:     [0.40, 0.38, 0.35],   // darker grey stone
+    w3:     [0.52, 0.43, 0.30],   // tan/brown brick (east/west)
+    w4:     [0.48, 0.38, 0.26],   // darker tan brick (alcove sides)
+    col:    [0.48, 0.50, 0.56],   // bluish-grey stone pillar
+    cap:    [0.52, 0.54, 0.60],   // matching bluish-grey cap/base
+    acc:    [0.55, 0.08, 0.04],   // red accent trim
+    lava:   [0.72, 0.28, 0.01],   // orange lava glow
+    dark:   [0.35, 0.22, 0.10],   // dark wood ceiling beams
+    trim:   [0.45, 0.30, 0.14],   // medium wood floor dividers
+    step:   [0.22, 0.12, 0.08],   // dark brown pit step
+    plat:   [0.44, 0.42, 0.38],   // grey platform
+    barrel: [0.50, 0.18, 0.10],   // dark reddish-brown barrel
+    lid:    [0.38, 0.14, 0.08]    // darker barrel lid
 };
 
 // ---------------------------------------------------------------------------
@@ -416,9 +416,9 @@ function addCylinder(x, y, z, radius, height, sides, sideCol, capCol) {
         var x2 = x + Math.cos(a2) * radius;
         var z2 = z + Math.sin(a2) * radius;
 
-        addQuad([x1,botY,z1],[x2,botY,z2],[x2,topY,z2],[x1,topY,z1], sideCol);
-        addQuad([x,topY,z],[x1,topY,z1],[x2,topY,z2],[x2,topY,z2], capCol);
-        addQuad([x,botY,z],[x2,botY,z2],[x1,botY,z1],[x1,botY,z1], capCol);
+        addQuad([x2,botY,z2],[x1,botY,z1],[x1,topY,z1],[x2,topY,z2], sideCol);
+        addQuad([x,topY,z],[x2,topY,z2],[x1,topY,z1],[x1,topY,z1], capCol);
+        addQuad([x,botY,z],[x1,botY,z1],[x2,botY,z2],[x2,botY,z2], capCol);
     }
 }
 
@@ -523,29 +523,29 @@ function buildScene() {
     ];
     for (var ci = 0; ci < columnPositions.length; ci++) {
         var cx = columnPositions[ci][0], cz = columnPositions[ci][1];
-        addBox(cx-0.9,  0,              cz-0.9,  1.8, 0.28, 1.8, C.cap, C.trim, C.cap);
+        addBox(cx-0.9,  0,              cz-0.9,  1.8, 0.28, 1.8, C.cap, C.cap, C.cap);
         addBox(cx-0.55, 0.28,           cz-0.55, 1.1, WallHeight-0.56, 1.1, C.col);
-        addBox(cx-0.9,  WallHeight-0.28, cz-0.9, 1.8, 0.28, 1.8, C.cap, C.trim, C.cap);
+        addBox(cx-0.9,  WallHeight-0.28, cz-0.9, 1.8, 0.28, 1.8, C.cap, C.cap, C.cap);
     }
 
-    // Lava pit with stepped terrain
+    // Lava pit – raised stepped platform entirely above ground
     var LX = 0, LZ = 5;
-    addBox(LX-5.5, -0.28, LZ-5.5, 11, 0.275, 11, C.w3, C.step, C.w3);
-    addBox(LX-3.5, -0.52, LZ-3.5,  7, 0.24,  7,  C.step, C.acc, C.step);
+    addBox(LX-5.5, 0.01, LZ-5.5, 11, 0.25, 11, C.w3, C.step, C.w3);
+    addBox(LX-3.5, 0.01, LZ-3.5,  7, 0.50,  7, C.step, C.acc, C.step);
 
-    // Lava floor
-    addQuad([LX-2.4,-0.52,LZ+2.4],[LX+2.4,-0.52,LZ+2.4],
-            [LX+2.4,-0.52,LZ-2.4],[LX-2.4,-0.52,LZ-2.4], C.lava);
+    // Lava floor sits on top of the inner step
+    addQuad([LX-2.4,0.52,LZ+2.4],[LX+2.4,0.52,LZ+2.4],
+            [LX+2.4,0.52,LZ-2.4],[LX-2.4,0.52,LZ-2.4], C.lava);
 
-    // Pit walls
-    addQuad([LX-2.4,-0.52,LZ-2.4],[LX-2.4,-0.52,LZ+2.4],
-            [LX-2.4,0,LZ+2.4],[LX-2.4,0,LZ-2.4], C.lava);
-    addQuad([LX+2.4,-0.52,LZ+2.4],[LX+2.4,-0.52,LZ-2.4],
-            [LX+2.4,0,LZ-2.4],[LX+2.4,0,LZ+2.4], C.lava);
-    addQuad([LX-2.4,-0.52,LZ+2.4],[LX+2.4,-0.52,LZ+2.4],
-            [LX+2.4,0,LZ+2.4],[LX-2.4,0,LZ+2.4], C.acc);
-    addQuad([LX+2.4,-0.52,LZ-2.4],[LX-2.4,-0.52,LZ-2.4],
-            [LX-2.4,0,LZ-2.4],[LX+2.4,0,LZ-2.4], C.acc);
+    // Lava rim walls (short lava-coloured band above inner step top)
+    addQuad([LX-2.4,0.50,LZ-2.4],[LX-2.4,0.50,LZ+2.4],
+            [LX-2.4,0.52,LZ+2.4],[LX-2.4,0.52,LZ-2.4], C.lava);
+    addQuad([LX+2.4,0.50,LZ+2.4],[LX+2.4,0.50,LZ-2.4],
+            [LX+2.4,0.52,LZ-2.4],[LX+2.4,0.52,LZ+2.4], C.lava);
+    addQuad([LX-2.4,0.50,LZ+2.4],[LX+2.4,0.50,LZ+2.4],
+            [LX+2.4,0.52,LZ+2.4],[LX-2.4,0.52,LZ+2.4], C.acc);
+    addQuad([LX+2.4,0.50,LZ-2.4],[LX-2.4,0.50,LZ-2.4],
+            [LX-2.4,0.52,LZ-2.4],[LX+2.4,0.52,LZ-2.4], C.acc);
 
     // Raised platforms on the sides
     addBox(-halfWidth+0.01, 0.005, -16, 5, 0.45, 7, C.plat, C.floor, C.w2);
@@ -594,16 +594,30 @@ function buildScene() {
 
     flushBatch();
 
-    // Industrial barrels (random placement, avoids lava pit)
+    // Industrial barrels (random placement, avoids lava pit and pillars)
+    var columnPositions2 = [
+        [-9, -14], [ 9, -14],
+        [-9,  -4], [ 9,  -4],
+        [-9,   6], [ 9,   6],
+        [-5,  15], [ 5,  15]
+    ];
     var barrelCount = 3;
     var placed = 0;
     var attempts = 0;
-    while (placed < barrelCount && attempts < 100) {
+    while (placed < barrelCount && attempts < 200) {
         var bx = (Math.random() - 0.5) * (RoomWidth - 6);
         var bz = (Math.random() - 0.5) * (RoomDepth - 10);
         var dx = bx - 0, dz = bz - 5;
         var distToLava = Math.sqrt(dx * dx + dz * dz);
-        if (distToLava >= 6) {
+        var hitPillar = false;
+        for (var pi = 0; pi < columnPositions2.length; pi++) {
+            var px = columnPositions2[pi][0], pz = columnPositions2[pi][1];
+            if (Math.abs(bx - px) < 1.8 && Math.abs(bz - pz) < 1.8) {
+                hitPillar = true;
+                break;
+            }
+        }
+        if (distToLava >= 6 && !hitPillar) {
             addCylinder(bx, 0, bz, 0.6, 1.6, 10, C.barrel, C.lid);
             placed++;
         }
@@ -927,6 +941,9 @@ window.onload = function init() {
     var canvas = document.getElementById("gl-canvas");
     gl = WebGLUtils.setupWebGL(canvas);
     if (!gl) { alert("WebGL isn't available"); return; }
+
+    // Required for dFdx/dFdy in flat shading (face-normal reconstruction)
+    gl.getExtension('OES_standard_derivatives');
 
     function resizeCanvas() {
         canvas.width  = window.innerWidth;

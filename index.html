@@ -114,51 +114,77 @@
 
         varying vec3 vCol;
         varying vec3 vNorm;
-        varying vec3 vFrag;
-        varying vec3 vFlatCol;
+        varying vec3 vWorldPos;
 
         void main() {
             gl_Position = uMVP * vec4(aPos, 1.0);
-            vFrag       = (uModel * vec4(aPos, 1.0)).xyz;
+            vWorldPos   = (uModel * vec4(aPos, 1.0)).xyz;
             vNorm       = normalize(uNM * aNorm);
             vCol        = aCol;
-
-            // Flat shading: diffuse computed per-vertex using face normal
-            vec3 L   = normalize(vec3(0.4, 1.0, 0.5));
-            float d  = max(dot(vNorm, L), 0.0);
-            vFlatCol = aCol * (0.22 + 0.78 * d);
         }
     </script>
 
     <script id="fragment-shader" type="x-shader/x-fragment">
+        #extension GL_OES_standard_derivatives : enable
         precision mediump float;
 
         varying vec3 vCol;
         varying vec3 vNorm;
-        varying vec3 vFrag;
-        varying vec3 vFlatCol;
+        varying vec3 vWorldPos;
 
         uniform int  uMode;
         uniform vec3 uLightPos;
         uniform vec3 uEye;
 
+        const vec3 DIR_LIGHT = normalize(vec3(0.3, 0.8, 0.4));
+
         void main() {
             if (uMode == 0) {
                 // Wireframe
                 gl_FragColor = vec4(min(vCol * 1.6, vec3(1.0)), 1.0);
+
             } else if (uMode == 1) {
-                // Flat shading
-                gl_FragColor = vec4(vFlatCol, 1.0);
+                // TRUE flat shading: reconstruct face normal from
+                // screen-space derivatives so each triangle gets
+                // one constant normal (faceted look).
+                vec3 dx = dFdx(vWorldPos);
+                vec3 dy = dFdy(vWorldPos);
+                vec3 N  = normalize(cross(dx, dy));
+
+                float dif = max(dot(N, DIR_LIGHT), 0.0);
+                float fill = max(dot(N, vec3(0.0, 1.0, 0.0)), 0.0) * 0.18;
+                vec3 col = vCol * (0.30 + 0.70 * dif + fill);
+                gl_FragColor = vec4(min(col, vec3(1.0)), 1.0);
+
             } else {
-                // Phong shading
-                vec3 N   = normalize(vNorm);
-                vec3 L   = normalize(uLightPos - vFrag);
-                vec3 V   = normalize(uEye - vFrag);
-                vec3 R   = reflect(-L, N);
-                float dif = max(dot(N, L), 0.0);
-                float spe = pow(max(dot(V, R), 0.0), 48.0) * 0.45;
-                vec3 col  = vCol * 0.22 + vCol * dif + vec3(spe);
-                gl_FragColor = vec4(col, 1.0);
+                // Smooth Phong shading: interpolated normals +
+                // directional light + point light + specular.
+                vec3 N = normalize(vNorm);
+
+                // Directional diffuse
+                float dif1 = max(dot(N, DIR_LIGHT), 0.0);
+
+                // Point light from room centre for local variation
+                vec3  L2   = uLightPos - vWorldPos;
+                float dist = length(L2);
+                L2 = L2 / dist;
+                float att  = 1.0 / (1.0 + 0.045 * dist + 0.007 * dist * dist);
+                float dif2 = max(dot(N, L2), 0.0) * att * 0.55;
+
+                // Up-fill
+                float fill = max(dot(N, vec3(0.0, 1.0, 0.0)), 0.0) * 0.15;
+
+                // Specular (directional)
+                vec3  V   = normalize(uEye - vWorldPos);
+                vec3  R   = reflect(-DIR_LIGHT, N);
+                float spe = pow(max(dot(V, R), 0.0), 48.0) * 0.40;
+
+                // Specular (point light)
+                vec3  R2   = reflect(-L2, N);
+                float spe2 = pow(max(dot(V, R2), 0.0), 48.0) * 0.25 * att;
+
+                vec3 col = vCol * (0.25 + 0.60 * dif1 + dif2 + fill) + vec3(spe + spe2);
+                gl_FragColor = vec4(min(col, vec3(1.0)), 1.0);
             }
         }
     </script>
