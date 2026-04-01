@@ -125,7 +125,6 @@
     </script>
 
     <script id="fragment-shader" type="x-shader/x-fragment">
-        #extension GL_OES_standard_derivatives : enable
         precision mediump float;
 
         varying vec3 vCol;
@@ -162,9 +161,7 @@
                 gl_FragColor = vec4(min(col, vec3(1.0)), 1.0);
 
             } else if (uMode == 1) {
-                vec3 dx = dFdx(vWorldPos);
-                vec3 dy = dFdy(vWorldPos);
-                vec3 N  = normalize(cross(dx, dy));
+                vec3 N = normalize(vNorm);
 
                 float dif = max(dot(N, DIR_LIGHT), 0.0);
                 float fill = max(dot(N, vec3(0.0, 1.0, 0.0)), 0.0) * 0.18;
@@ -213,9 +210,9 @@
     <div id="crosshair">+</div>
 
     <div id="bar">
-        <button class="sbtn" onclick="setSh(0)">WIREFRAME</button>
-        <button class="sbtn on" onclick="setSh(1)">FLAT</button>
-        <button class="sbtn" onclick="setSh(2)">SMOOTH</button>
+        <button class="sbtn" onclick="setShadingMode(0)">WIREFRAME</button>
+        <button class="sbtn on" onclick="setShadingMode(1)">FLAT</button>
+        <button class="sbtn" onclick="setShadingMode(2)">SMOOTH</button>
     </div>
 
     <div id="overlay">

@@ -1,14 +1,14 @@
 var gl;
 var program;
 
-var aPos, aNorm, aCol;
-var uMVP, uModel, uNM, uMode, uLightPos, uEye, uTime;
+var attribPos, attribNorm, attribCol;
+var uniformMvp, uniformModel, uniformNormalMatrix, uniformMode, uniformLightPos, uniformEye, uniformTime;
 
 var batches = [];
 var gunBatch = null;
-var gP = [], gN = [], gC = [], gI = [], gBase = 0;
+var geomPositions = [], geomNormals = [], geomColors = [], geomIndices = [], geomBaseIndex = 0;
 
-var C = {
+var colors = {
     floor:  [0.35, 0.33, 0.30],
     ceil:   [0.42, 0.40, 0.37],
     w1:     [0.45, 0.42, 0.38],
@@ -27,7 +27,7 @@ var C = {
     lid:    [0.38, 0.14, 0.08]
 };
 
-var RoomWidth = 30, RoomDepth = 40, WallHeight = 6;
+var roomWidth = 30, roomDepth = 40, wallHeight = 6;
 var halfWidth = 15, halfDepth = 20;
 
 var cam = {
@@ -40,7 +40,7 @@ var cam = {
 var BOUNDS = {
     minX: -halfWidth + 0.4, maxX:  halfWidth - 0.4,
     minZ: -halfDepth + 0.4, maxZ:  halfDepth + 18 - 0.4,
-    minY:  1.6, maxY:  WallHeight - 0.4
+    minY:  1.6, maxY:  wallHeight - 0.4
 };
 var HALL = {
     halfWidth: 3.5,
@@ -74,52 +74,52 @@ function mat3Normal(m) {
 }
 
 function flushBatch() {
-    if (gP.length === 0) return;
+    if (geomPositions.length === 0) return;
 
-    var posB = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, posB);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(gP), gl.STATIC_DRAW);
+    var posBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, posBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(geomPositions), gl.STATIC_DRAW);
 
-    var norB = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, norB);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(gN), gl.STATIC_DRAW);
+    var normalBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, normalBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(geomNormals), gl.STATIC_DRAW);
 
-    var colB = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, colB);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(gC), gl.STATIC_DRAW);
+    var colorBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(geomColors), gl.STATIC_DRAW);
 
-    var idxB = gl.createBuffer();
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, idxB);
-    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(gI), gl.STATIC_DRAW);
+    var indexBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(geomIndices), gl.STATIC_DRAW);
     var edgeSet = {};
-    var wireArr = [];
-    for (var i = 0; i < gI.length; i += 3) {
-        var a = gI[i], b = gI[i+1], c = gI[i+2];
+    var wireIndices = [];
+    for (var i = 0; i < geomIndices.length; i += 3) {
+        var a = geomIndices[i], b = geomIndices[i+1], c = geomIndices[i+2];
         var edges = [[a,b],[b,c],[a,c]];
         for (var j = 0; j < edges.length; j++) {
             var p = edges[j][0], q = edges[j][1];
             var key = Math.min(p,q) + '|' + Math.max(p,q);
             if (!edgeSet[key]) {
                 edgeSet[key] = true;
-                wireArr.push(p, q);
+                wireIndices.push(p, q);
             }
         }
     }
-    var wIdxB = gl.createBuffer();
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, wIdxB);
-    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(wireArr), gl.STATIC_DRAW);
+    var wireIndexBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, wireIndexBuffer);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(wireIndices), gl.STATIC_DRAW);
 
     batches.push({
-        posB: posB, norB: norB, colB: colB,
-        idxB: idxB, cnt: gI.length,
-        wIdxB: wIdxB, wcnt: wireArr.length
+        posBuffer: posBuffer, normalBuffer: normalBuffer, colorBuffer: colorBuffer,
+        indexBuffer: indexBuffer, indexCount: geomIndices.length,
+        wireIndexBuffer: wireIndexBuffer, wireCount: wireIndices.length
     });
 
-    gP = [];  gN = [];  gC = [];  gI = [];  gBase = 0;
+    geomPositions = [];  geomNormals = [];  geomColors = [];  geomIndices = [];  geomBaseIndex = 0;
 }
 
 function addQuad(p0, p1, p2, p3, col) {
-    if (gBase + 4 > 62000) flushBatch();
+    if (geomBaseIndex + 4 > 62000) flushBatch();
 
     var e1 = subtract(p1, p0);
     var e2 = subtract(p3, p0);
@@ -127,39 +127,39 @@ function addQuad(p0, p1, p2, p3, col) {
 
     var verts = [p0, p1, p2, p3];
     for (var i = 0; i < 4; i++) {
-        gP.push(verts[i][0], verts[i][1], verts[i][2]);
-        gN.push(n[0], n[1], n[2]);
-        gC.push(col[0], col[1], col[2]);
+        geomPositions.push(verts[i][0], verts[i][1], verts[i][2]);
+        geomNormals.push(n[0], n[1], n[2]);
+        geomColors.push(col[0], col[1], col[2]);
     }
-    gI.push(gBase, gBase+1, gBase+2, gBase, gBase+2, gBase+3);
-    gBase += 4;
+    geomIndices.push(geomBaseIndex, geomBaseIndex+1, geomBaseIndex+2, geomBaseIndex, geomBaseIndex+2, geomBaseIndex+3);
+    geomBaseIndex += 4;
 }
 
 function addSmoothQuad(p0, p1, p2, p3, n0, n1, n2, n3, col) {
-    if (gBase + 4 > 62000) flushBatch();
+    if (geomBaseIndex + 4 > 62000) flushBatch();
     var verts = [p0, p1, p2, p3];
     var norms = [n0, n1, n2, n3];
     for (var i = 0; i < 4; i++) {
-        gP.push(verts[i][0], verts[i][1], verts[i][2]);
-        gN.push(norms[i][0], norms[i][1], norms[i][2]);
-        gC.push(col[0], col[1], col[2]);
+        geomPositions.push(verts[i][0], verts[i][1], verts[i][2]);
+        geomNormals.push(norms[i][0], norms[i][1], norms[i][2]);
+        geomColors.push(col[0], col[1], col[2]);
     }
-    gI.push(gBase, gBase + 1, gBase + 2, gBase, gBase + 2, gBase + 3);
-    gBase += 4;
+    geomIndices.push(geomBaseIndex, geomBaseIndex + 1, geomBaseIndex + 2, geomBaseIndex, geomBaseIndex + 2, geomBaseIndex + 3);
+    geomBaseIndex += 4;
 }
 
 function addBox(x, y, z, W, H, D, sideCol, topCol, botCol) {
-    var sc = sideCol;
-    var tc = topCol || sc;
-    var bc = botCol || sc;
+    var sideColor = sideCol;
+    var topColor = topCol || sideColor;
+    var bottomColor = botCol || sideColor;
     var x1 = x+W, y1 = y+H, z1 = z+D;
 
-    addQuad([x,y,z1],[x,y,z], [x1,y,z],  [x1,y,z1], bc);
-    addQuad([x,y1,z],[x,y1,z1],[x1,y1,z1],[x1,y1,z], tc);
-    addQuad([x,y,z1],[x1,y,z1],[x1,y1,z1],[x,y1,z1], sc);
-    addQuad([x1,y,z],[x,y,z], [x,y1,z],  [x1,y1,z], sc);
-    addQuad([x,y,z], [x,y,z1], [x,y1,z1], [x,y1,z],  sc);
-    addQuad([x1,y,z1],[x1,y,z],[x1,y1,z],[x1,y1,z1], sc);
+    addQuad([x,y,z1],[x,y,z], [x1,y,z],  [x1,y,z1], bottomColor);
+    addQuad([x,y1,z],[x,y1,z1],[x1,y1,z1],[x1,y1,z], topColor);
+    addQuad([x,y,z1],[x1,y,z1],[x1,y1,z1],[x,y1,z1], sideColor);
+    addQuad([x1,y,z],[x,y,z], [x,y1,z],  [x1,y1,z], sideColor);
+    addQuad([x,y,z], [x,y,z1], [x,y1,z1], [x,y1,z],  sideColor);
+    addQuad([x1,y,z1],[x1,y,z],[x1,y1,z],[x1,y1,z1], sideColor);
 }
 
 function addCylinder(x, y, z, radius, height, sides, sideCol, capCol) {
@@ -168,48 +168,48 @@ function addCylinder(x, y, z, radius, height, sides, sideCol, capCol) {
     var step = (Math.PI * 2) / sides;
 
     for (var i = 0; i < sides; i++) {
-        var a1 = i * step;
-        var a2 = (i + 1) * step;
-        var x1 = x + Math.cos(a1) * radius;
-        var z1 = z + Math.sin(a1) * radius;
-        var x2 = x + Math.cos(a2) * radius;
-        var z2 = z + Math.sin(a2) * radius;
-        var n1 = [Math.cos(a1), 0, Math.sin(a1)];
-        var n2 = [Math.cos(a2), 0, Math.sin(a2)];
+        var angle1 = i * step;
+        var angle2 = (i + 1) * step;
+        var x1 = x + Math.cos(angle1) * radius;
+        var z1 = z + Math.sin(angle1) * radius;
+        var x2 = x + Math.cos(angle2) * radius;
+        var z2 = z + Math.sin(angle2) * radius;
+        var normal1 = [Math.cos(angle1), 0, Math.sin(angle1)];
+        var normal2 = [Math.cos(angle2), 0, Math.sin(angle2)];
 
-        addSmoothQuad([x2, botY, z2], [x1, botY, z1], [x1, topY, z1], [x2, topY, z2], n2, n1, n1, n2, sideCol);
+        addSmoothQuad([x2, botY, z2], [x1, botY, z1], [x1, topY, z1], [x2, topY, z2], normal2, normal1, normal1, normal2, sideCol);
         addQuad([x,topY,z],[x2,topY,z2],[x1,topY,z1],[x1,topY,z1], capCol);
         addQuad([x,botY,z],[x1,botY,z1],[x2,botY,z2],[x2,botY,z2], capCol);
     }
 }
 
 function buildScene() {
-    var T0 = 0.85, T1 = 1.15;
+    var trimLow = 0.85, trimHigh = 1.15;
     addQuad([-halfWidth,0, halfDepth],[ halfWidth,0, halfDepth],
-            [ halfWidth,0,-halfDepth],[-halfWidth,0,-halfDepth], C.floor);
-    addQuad([-halfWidth,WallHeight,-halfDepth],[ halfWidth,WallHeight,-halfDepth],
-            [ halfWidth,WallHeight, halfDepth],[-halfWidth,WallHeight, halfDepth], C.ceil);
+            [ halfWidth,0,-halfDepth],[-halfWidth,0,-halfDepth], colors.floor);
+    addQuad([-halfWidth,wallHeight,-halfDepth],[ halfWidth,wallHeight,-halfDepth],
+            [ halfWidth,wallHeight, halfDepth],[-halfWidth,wallHeight, halfDepth], colors.ceil);
     addQuad([ halfWidth,0,-halfDepth],[-halfWidth,0,-halfDepth],
-            [-halfWidth,WallHeight,-halfDepth],[ halfWidth,WallHeight,-halfDepth], C.w1);
+            [-halfWidth,wallHeight,-halfDepth],[ halfWidth,wallHeight,-halfDepth], colors.w1);
     addQuad([-halfWidth,0, halfDepth],[ halfWidth,0, halfDepth],
-            [ halfWidth,WallHeight, halfDepth],[-halfWidth,WallHeight, halfDepth], C.w2);
+            [ halfWidth,wallHeight, halfDepth],[-halfWidth,wallHeight, halfDepth], colors.w2);
     addQuad([-halfWidth,0,-halfDepth],[-halfWidth,0, halfDepth],
-            [-halfWidth,WallHeight, halfDepth],[-halfWidth,WallHeight,-halfDepth], C.w3);
+            [-halfWidth,wallHeight, halfDepth],[-halfWidth,wallHeight,-halfDepth], colors.w3);
     addQuad([ halfWidth,0, halfDepth],[ halfWidth,0,-halfDepth],
-            [ halfWidth,WallHeight,-halfDepth],[ halfWidth,WallHeight, halfDepth], C.w3);
-    addQuad([ halfWidth,T0,-halfDepth+0.01],[-halfWidth,T0,-halfDepth+0.01],
-            [-halfWidth,T1,-halfDepth+0.01],[ halfWidth,T1,-halfDepth+0.01], C.acc);
-    addQuad([-halfWidth,T0, halfDepth-0.01],[ halfWidth,T0, halfDepth-0.01],
-            [ halfWidth,T1, halfDepth-0.01],[-halfWidth,T1, halfDepth-0.01], C.acc);
-    addQuad([-halfWidth+0.01,T0,-halfDepth],[-halfWidth+0.01,T0, halfDepth],
-            [-halfWidth+0.01,T1, halfDepth],[-halfWidth+0.01,T1,-halfDepth], C.acc);
-    addQuad([ halfWidth-0.01,T0, halfDepth],[ halfWidth-0.01,T0,-halfDepth],
-            [ halfWidth-0.01,T1,-halfDepth],[ halfWidth-0.01,T1, halfDepth], C.acc);
-    for (var bz = -16; bz <= 16; bz += 8) {
-        addBox(-halfWidth, WallHeight-0.32, bz-0.2, RoomWidth, 0.31, 0.4, C.dark);
+            [ halfWidth,wallHeight,-halfDepth],[ halfWidth,wallHeight, halfDepth], colors.w3);
+    addQuad([ halfWidth,trimLow,-halfDepth+0.01],[-halfWidth,trimLow,-halfDepth+0.01],
+            [-halfWidth,trimHigh,-halfDepth+0.01],[ halfWidth,trimHigh,-halfDepth+0.01], colors.acc);
+    addQuad([-halfWidth,trimLow, halfDepth-0.01],[ halfWidth,trimLow, halfDepth-0.01],
+            [ halfWidth,trimHigh, halfDepth-0.01],[-halfWidth,trimHigh, halfDepth-0.01], colors.acc);
+    addQuad([-halfWidth+0.01,trimLow,-halfDepth],[-halfWidth+0.01,trimLow, halfDepth],
+            [-halfWidth+0.01,trimHigh, halfDepth],[-halfWidth+0.01,trimHigh,-halfDepth], colors.acc);
+    addQuad([ halfWidth-0.01,trimLow, halfDepth],[ halfWidth-0.01,trimLow,-halfDepth],
+            [ halfWidth-0.01,trimHigh,-halfDepth],[ halfWidth-0.01,trimHigh, halfDepth], colors.acc);
+    for (var beamZ = -16; beamZ <= 16; beamZ += 8) {
+        addBox(-halfWidth, wallHeight-0.32, beamZ-0.2, roomWidth, 0.31, 0.4, colors.dark);
     }
-    for (var i = -2; i <= 2; i++) {
-        addBox(i*7 - 0.05, 0.005, -halfDepth, 0.1, 0.07, RoomDepth, C.trim);
+    for (var trimIdx = -2; trimIdx <= 2; trimIdx++) {
+        addBox(trimIdx*7 - 0.05, 0.005, -halfDepth, 0.1, 0.07, roomDepth, colors.trim);
     }
     var columnPositions = [
         [-9, -14], [ 9, -14],
@@ -217,66 +217,66 @@ function buildScene() {
         [-9, 6], [ 9, 6],
         [-5, 15], [ 5, 15]
     ];
-    for (var ci = 0; ci < columnPositions.length; ci++) {
-        var cx = columnPositions[ci][0], cz = columnPositions[ci][1];
-        addBox(cx-0.9,  0, cz-0.9,  1.8, 0.28, 1.8, C.cap, C.cap, C.cap);
-        addBox(cx-0.55, 0.28, cz-0.55, 1.1, WallHeight-0.56, 1.1, C.col);
-        addBox(cx-0.9,  WallHeight-0.28, cz-0.9, 1.8, 0.28, 1.8, C.cap, C.cap, C.cap);
+    for (var colIdx = 0; colIdx < columnPositions.length; colIdx++) {
+        var colX = columnPositions[colIdx][0], colZ = columnPositions[colIdx][1];
+        addBox(colX-0.9,  0, colZ-0.9,  1.8, 0.28, 1.8, colors.cap, colors.cap, colors.cap);
+        addBox(colX-0.55, 0.28, colZ-0.55, 1.1, wallHeight-0.56, 1.1, colors.col);
+        addBox(colX-0.9,  wallHeight-0.28, colZ-0.9, 1.8, 0.28, 1.8, colors.cap, colors.cap, colors.cap);
     }
-    var LX = 0, LZ = 5;
-    addBox(LX-5.5, 0.01, LZ-5.5, 11, 0.25, 11, C.w3, C.step, C.w3);
-    addBox(LX-3.5, 0.01, LZ-3.5,  7, 0.50,  7, C.step, C.acc, C.step);
-    addQuad([LX-2.4,0.52,LZ+2.4],[LX+2.4,0.52,LZ+2.4],
-            [LX+2.4,0.52,LZ-2.4],[LX-2.4,0.52,LZ-2.4], C.lava);
-    addQuad([LX-2.4,0.50,LZ-2.4],[LX-2.4,0.50,LZ+2.4],
-            [LX-2.4,0.52,LZ+2.4],[LX-2.4,0.52,LZ-2.4], C.lava);
-    addQuad([LX+2.4,0.50,LZ+2.4],[LX+2.4,0.50,LZ-2.4],
-            [LX+2.4,0.52,LZ-2.4],[LX+2.4,0.52,LZ+2.4], C.lava);
-    addQuad([LX-2.4,0.50,LZ+2.4],[LX+2.4,0.50,LZ+2.4],
-            [LX+2.4,0.52,LZ+2.4],[LX-2.4,0.52,LZ+2.4], C.acc);
-    addQuad([LX+2.4,0.50,LZ-2.4],[LX-2.4,0.50,LZ-2.4],
-            [LX-2.4,0.52,LZ-2.4],[LX+2.4,0.52,LZ-2.4], C.acc);
-    addBox(-halfWidth+0.01, 0.005, -16, 5, 0.45, 7, C.plat, C.floor, C.w2);
-    addBox( halfWidth-5.01, 0.005, -16, 5, 0.45, 7, C.plat, C.floor, C.w2);
-    var ax = 3.5, az = 1.5;
-    addQuad([-ax,0,-halfDepth-az],[ ax,0,-halfDepth-az],
-            [ ax,0,-halfDepth],[-ax,0,-halfDepth], C.floor);
-    addQuad([-ax,WallHeight,-halfDepth],[ ax,WallHeight,-halfDepth],
-            [ ax,WallHeight,-halfDepth-az],[-ax,WallHeight,-halfDepth-az], C.ceil);
-    addQuad([ ax,0,-halfDepth-az],[-ax,0,-halfDepth-az],
-            [-ax,WallHeight,-halfDepth-az],[ ax,WallHeight,-halfDepth-az], C.w1);
-    addQuad([-ax,0,-halfDepth],[-ax,0,-halfDepth-az],
-            [-ax,WallHeight,-halfDepth-az],[-ax,WallHeight,-halfDepth], C.w4);
-    addQuad([ ax,0,-halfDepth-az],[ ax,0,-halfDepth],
-            [ ax,WallHeight,-halfDepth],[ ax,WallHeight,-halfDepth-az], C.w4);
-    addQuad([ halfWidth,0,-halfDepth],[ ax,0,-halfDepth],
-            [ ax,WallHeight,-halfDepth],[ halfWidth,WallHeight,-halfDepth], C.w1);
-    addQuad([-ax,0,-halfDepth],[-halfWidth,0,-halfDepth],
-            [-halfWidth,WallHeight,-halfDepth],[-ax,WallHeight,-halfDepth], C.w1);
+    var lavaX = 0, lavaZ = 5;
+    addBox(lavaX-5.5, 0.01, lavaZ-5.5, 11, 0.25, 11, colors.w3, colors.step, colors.w3);
+    addBox(lavaX-3.5, 0.01, lavaZ-3.5,  7, 0.50,  7, colors.step, colors.acc, colors.step);
+    addQuad([lavaX-2.4,0.52,lavaZ+2.4],[lavaX+2.4,0.52,lavaZ+2.4],
+            [lavaX+2.4,0.52,lavaZ-2.4],[lavaX-2.4,0.52,lavaZ-2.4], colors.lava);
+    addQuad([lavaX-2.4,0.50,lavaZ-2.4],[lavaX-2.4,0.50,lavaZ+2.4],
+            [lavaX-2.4,0.52,lavaZ+2.4],[lavaX-2.4,0.52,lavaZ-2.4], colors.lava);
+    addQuad([lavaX+2.4,0.50,lavaZ+2.4],[lavaX+2.4,0.50,lavaZ-2.4],
+            [lavaX+2.4,0.52,lavaZ-2.4],[lavaX+2.4,0.52,lavaZ+2.4], colors.lava);
+    addQuad([lavaX-2.4,0.50,lavaZ+2.4],[lavaX+2.4,0.50,lavaZ+2.4],
+            [lavaX+2.4,0.52,lavaZ+2.4],[lavaX-2.4,0.52,lavaZ+2.4], colors.acc);
+    addQuad([lavaX+2.4,0.50,lavaZ-2.4],[lavaX-2.4,0.50,lavaZ-2.4],
+            [lavaX-2.4,0.52,lavaZ-2.4],[lavaX+2.4,0.52,lavaZ-2.4], colors.acc);
+    addBox(-halfWidth+0.01, 0.005, -16, 5, 0.45, 7, colors.plat, colors.floor, colors.w2);
+    addBox( halfWidth-5.01, 0.005, -16, 5, 0.45, 7, colors.plat, colors.floor, colors.w2);
+    var alcoveX = 3.5, alcoveZ = 1.5;
+    addQuad([-alcoveX,0,-halfDepth-alcoveZ],[ alcoveX,0,-halfDepth-alcoveZ],
+            [ alcoveX,0,-halfDepth],[-alcoveX,0,-halfDepth], colors.floor);
+    addQuad([-alcoveX,wallHeight,-halfDepth],[ alcoveX,wallHeight,-halfDepth],
+            [ alcoveX,wallHeight,-halfDepth-alcoveZ],[-alcoveX,wallHeight,-halfDepth-alcoveZ], colors.ceil);
+    addQuad([ alcoveX,0,-halfDepth-alcoveZ],[-alcoveX,0,-halfDepth-alcoveZ],
+            [-alcoveX,wallHeight,-halfDepth-alcoveZ],[ alcoveX,wallHeight,-halfDepth-alcoveZ], colors.w1);
+    addQuad([-alcoveX,0,-halfDepth],[-alcoveX,0,-halfDepth-alcoveZ],
+            [-alcoveX,wallHeight,-halfDepth-alcoveZ],[-alcoveX,wallHeight,-halfDepth], colors.w4);
+    addQuad([ alcoveX,0,-halfDepth-alcoveZ],[ alcoveX,0,-halfDepth],
+            [ alcoveX,wallHeight,-halfDepth],[ alcoveX,wallHeight,-halfDepth-alcoveZ], colors.w4);
+    addQuad([ halfWidth,0,-halfDepth],[ alcoveX,0,-halfDepth],
+            [ alcoveX,wallHeight,-halfDepth],[ halfWidth,wallHeight,-halfDepth], colors.w1);
+    addQuad([-alcoveX,0,-halfDepth],[-halfWidth,0,-halfDepth],
+            [-halfWidth,wallHeight,-halfDepth],[-alcoveX,wallHeight,-halfDepth], colors.w1);
     var hallWidth = 7, hallDepth = 18;
     var halfHall = hallWidth / 2;
 
     addQuad([-halfHall,0,halfDepth+hallDepth],[ halfHall,0,halfDepth+hallDepth],
-            [ halfHall,0,halfDepth],[-halfHall,0,halfDepth], C.floor);
-    addQuad([-halfHall,WallHeight,halfDepth],[ halfHall,WallHeight,halfDepth],
-            [ halfHall,WallHeight,halfDepth+hallDepth],[-halfHall,WallHeight,halfDepth+hallDepth], C.ceil);
+            [ halfHall,0,halfDepth],[-halfHall,0,halfDepth], colors.floor);
+    addQuad([-halfHall,wallHeight,halfDepth],[ halfHall,wallHeight,halfDepth],
+            [ halfHall,wallHeight,halfDepth+hallDepth],[-halfHall,wallHeight,halfDepth+hallDepth], colors.ceil);
     addQuad([-halfHall,0,halfDepth],[-halfHall,0,halfDepth+hallDepth],
-            [-halfHall,WallHeight,halfDepth+hallDepth],[-halfHall,WallHeight,halfDepth], C.w4);
+            [-halfHall,wallHeight,halfDepth+hallDepth],[-halfHall,wallHeight,halfDepth], colors.w4);
     addQuad([ halfHall,0,halfDepth+hallDepth],[ halfHall,0,halfDepth],
-            [ halfHall,WallHeight,halfDepth],[ halfHall,WallHeight,halfDepth+hallDepth], C.w4);
+            [ halfHall,wallHeight,halfDepth],[ halfHall,wallHeight,halfDepth+hallDepth], colors.w4);
     addQuad([ halfHall,0,halfDepth+hallDepth],[-halfHall,0,halfDepth+hallDepth],
-            [-halfHall,WallHeight,halfDepth+hallDepth],[ halfHall,WallHeight,halfDepth+hallDepth], C.w1);
-    addQuad([-halfHall+0.01,T0,halfDepth],[-halfHall+0.01,T0,halfDepth+hallDepth],
-            [-halfHall+0.01,T1,halfDepth+hallDepth],[-halfHall+0.01,T1,halfDepth], C.acc);
-    addQuad([ halfHall-0.01,T0,halfDepth+hallDepth],[ halfHall-0.01,T0,halfDepth],
-            [ halfHall-0.01,T1,halfDepth],[ halfHall-0.01,T1,halfDepth+hallDepth], C.acc);
+            [-halfHall,wallHeight,halfDepth+hallDepth],[ halfHall,wallHeight,halfDepth+hallDepth], colors.w1);
+    addQuad([-halfHall+0.01,trimLow,halfDepth],[-halfHall+0.01,trimLow,halfDepth+hallDepth],
+            [-halfHall+0.01,trimHigh,halfDepth+hallDepth],[-halfHall+0.01,trimHigh,halfDepth], colors.acc);
+    addQuad([ halfHall-0.01,trimLow,halfDepth+hallDepth],[ halfHall-0.01,trimLow,halfDepth],
+            [ halfHall-0.01,trimHigh,halfDepth],[ halfHall-0.01,trimHigh,halfDepth+hallDepth], colors.acc);
     addQuad([-halfWidth,0,halfDepth],[-halfHall,0,halfDepth],
-            [-halfHall,WallHeight,halfDepth],[-halfWidth,WallHeight,halfDepth], C.w2);
+            [-halfHall,wallHeight,halfDepth],[-halfWidth,wallHeight,halfDepth], colors.w2);
     addQuad([ halfHall,0,halfDepth],[ halfWidth,0,halfDepth],
-            [ halfWidth,WallHeight,halfDepth],[ halfHall,WallHeight,halfDepth], C.w2);
+            [ halfWidth,wallHeight,halfDepth],[ halfHall,wallHeight,halfDepth], colors.w2);
 
     flushBatch();
-    var columnPositions2 = [
+    var pillarPositions = [
         [-9, -14], [9, -14],
         [-9, -4], [9, -4],
         [-9, 6], [9, 6],
@@ -286,20 +286,20 @@ function buildScene() {
     var placed = 0;
     var attempts = 0;
     while (placed < barrelCount && attempts < 200) {
-        var bx = (Math.random() - 0.5) * (RoomWidth - 6);
-        var bz = (Math.random() - 0.5) * (RoomDepth - 10);
-        var dx = bx - 0, dz = bz - 5;
-        var distToLava = Math.sqrt(dx * dx + dz * dz);
+        var barrelX = (Math.random() - 0.5) * (roomWidth - 6);
+        var barrelZ = (Math.random() - 0.5) * (roomDepth - 10);
+        var deltaX = barrelX - 0, deltaZ = barrelZ - 5;
+        var distToLava = Math.sqrt(deltaX * deltaX + deltaZ * deltaZ);
         var hitPillar = false;
-        for (var pi = 0; pi < columnPositions2.length; pi++) {
-            var px = columnPositions2[pi][0], pz = columnPositions2[pi][1];
-            if (Math.abs(bx - px) < 1.8 && Math.abs(bz - pz) < 1.8) {
+        for (var pillarIdx = 0; pillarIdx < pillarPositions.length; pillarIdx++) {
+            var pillarX = pillarPositions[pillarIdx][0], pillarZ = pillarPositions[pillarIdx][1];
+            if (Math.abs(barrelX - pillarX) < 1.8 && Math.abs(barrelZ - pillarZ) < 1.8) {
                 hitPillar = true;
                 break;
             }
         }
         if (distToLava >= 6 && !hitPillar) {
-            addCylinder(bx, 0, bz, 0.6, 1.6, 10, C.barrel, C.lid);
+            addCylinder(barrelX, 0, barrelZ, 0.6, 1.6, 10, colors.barrel, colors.lid);
             placed++;
         }
         attempts++;
@@ -308,7 +308,7 @@ function buildScene() {
     flushBatch();
 }
 function buildGun() {
-    gP = []; gN = []; gC = []; gI = []; gBase = 0;
+    geomPositions = []; geomNormals = []; geomColors = []; geomIndices = []; geomBaseIndex = 0;
 
     var metal  = [0.15, 0.15, 0.17];
     var metal2 = [0.28, 0.28, 0.33];
@@ -334,28 +334,28 @@ function buildGun() {
     gunBatch = batches.pop();
 }
 
-function setSh(m) {
-    shadingMode = m;
+function setShadingMode(mode) {
+    shadingMode = mode;
     var btns = document.querySelectorAll('.sbtn');
     for (var i = 0; i < btns.length; i++) {
-        if (i === m) btns[i].className = 'sbtn on';
+        if (i === mode) btns[i].className = 'sbtn on';
         else btns[i].className = 'sbtn';
     }
     document.getElementById('hshd').textContent =
-        'SHADING: ' + ['WIREFRAME', 'FLAT', 'SMOOTH'][m];
+        'SHADING: ' + ['WIREFRAME', 'FLAT', 'SMOOTH'][mode];
 }
 
 function update(dt) {
-    var spd = cam.speed * ((keys.ShiftLeft || keys.ShiftRight) ? 2.5 : 1.0);
+    var moveSpeed = cam.speed * ((keys.ShiftLeft || keys.ShiftRight) ? 2.5 : 1.0);
 
-    var cy = Math.cos(cam.yaw), sy = Math.sin(cam.yaw);
-    var fx = sy,  fz = -cy;
-    var rx = cy,  rz = sy;
+    var cosYaw = Math.cos(cam.yaw), sinYaw = Math.sin(cam.yaw);
+    var forwardX = sinYaw,  forwardZ = -cosYaw;
+    var rightX = cosYaw,  rightZ = sinYaw;
 
-    if (keys.KeyW) { cam.x += fx*spd*dt;  cam.z += fz*spd*dt; }
-    if (keys.KeyS) { cam.x -= fx*spd*dt;  cam.z -= fz*spd*dt; }
-    if (keys.KeyA) { cam.x -= rx*spd*dt;  cam.z -= rz*spd*dt; }
-    if (keys.KeyD) { cam.x += rx*spd*dt;  cam.z += rz*spd*dt; }
+    if (keys.KeyW) { cam.x += forwardX*moveSpeed*dt;  cam.z += forwardZ*moveSpeed*dt; }
+    if (keys.KeyS) { cam.x -= forwardX*moveSpeed*dt;  cam.z -= forwardZ*moveSpeed*dt; }
+    if (keys.KeyA) { cam.x -= rightX*moveSpeed*dt;  cam.z -= rightZ*moveSpeed*dt; }
+    if (keys.KeyD) { cam.x += rightX*moveSpeed*dt;  cam.z += rightZ*moveSpeed*dt; }
     if (keys.KeyR) cam.y += spd * dt;
     if (keys.KeyF) cam.y -= spd * dt;
 
@@ -385,24 +385,24 @@ function update(dt) {
 }
 
 function drawBatch(b) {
-    gl.bindBuffer(gl.ARRAY_BUFFER, b.posB);
-    gl.enableVertexAttribArray(aPos);
-    gl.vertexAttribPointer(aPos, 3, gl.FLOAT, false, 0, 0);
+    gl.bindBuffer(gl.ARRAY_BUFFER, b.posBuffer);
+    gl.enableVertexAttribArray(attribPos);
+    gl.vertexAttribPointer(attribPos, 3, gl.FLOAT, false, 0, 0);
 
-    gl.bindBuffer(gl.ARRAY_BUFFER, b.norB);
-    gl.enableVertexAttribArray(aNorm);
-    gl.vertexAttribPointer(aNorm, 3, gl.FLOAT, false, 0, 0);
+    gl.bindBuffer(gl.ARRAY_BUFFER, b.normalBuffer);
+    gl.enableVertexAttribArray(attribNorm);
+    gl.vertexAttribPointer(attribNorm, 3, gl.FLOAT, false, 0, 0);
 
-    gl.bindBuffer(gl.ARRAY_BUFFER, b.colB);
-    gl.enableVertexAttribArray(aCol);
-    gl.vertexAttribPointer(aCol, 3, gl.FLOAT, false, 0, 0);
+    gl.bindBuffer(gl.ARRAY_BUFFER, b.colorBuffer);
+    gl.enableVertexAttribArray(attribCol);
+    gl.vertexAttribPointer(attribCol, 3, gl.FLOAT, false, 0, 0);
 
     if (shadingMode === 0) {
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, b.wIdxB);
-        gl.drawElements(gl.LINES, b.wcnt, gl.UNSIGNED_SHORT, 0);
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, b.wireIndexBuffer);
+        gl.drawElements(gl.LINES, b.wireCount, gl.UNSIGNED_SHORT, 0);
     } else {
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, b.idxB);
-        gl.drawElements(gl.TRIANGLES, b.cnt, gl.UNSIGNED_SHORT, 0);
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, b.indexBuffer);
+        gl.drawElements(gl.TRIANGLES, b.indexCount, gl.UNSIGNED_SHORT, 0);
     }
 }
 
@@ -415,31 +415,31 @@ function render(now) {
     if (fpsAcc >= 0.5) { fps = Math.round(fpsCnt / fpsAcc); fpsAcc = 0; fpsCnt = 0; }
 
     update(dt);
-    var RAD = 180.0 / Math.PI;
-    var T = translate(-cam.x, -cam.y, -cam.z);
-    var Ry = rotateY(cam.yaw * RAD);
-    var Rx = rotateX(cam.pitch * RAD);
-    var Rz = rotateZ(cam.roll * RAD);
-    var view = mult(Rz, mult(Rx, mult(Ry, T)));
-    var asp = gl.canvas.width / gl.canvas.height;
-    var fovR = cam.fov * Math.PI / 180;
-    var tHalf = cam.near * Math.tan(fovR / 2);
-    var wHalf = tHalf * asp;
-    var proj = frustum(-wHalf, wHalf, -tHalf, tHalf, cam.near, cam.far);
+    var radToDeg = 180.0 / Math.PI;
+    var translateMat = translate(-cam.x, -cam.y, -cam.z);
+    var rotYawMat = rotateY(cam.yaw * radToDeg);
+    var rotPitchMat = rotateX(cam.pitch * radToDeg);
+    var rotRollMat = rotateZ(cam.roll * radToDeg);
+    var view = mult(rotRollMat, mult(rotPitchMat, mult(rotYawMat, translateMat)));
+    var aspectRatio = gl.canvas.width / gl.canvas.height;
+    var fovRadians = cam.fov * Math.PI / 180;
+    var halfTanFov = cam.near * Math.tan(fovRadians / 2);
+    var halfFrustumW = halfTanFov * aspectRatio;
+    var proj = frustum(-halfFrustumW, halfFrustumW, -halfTanFov, halfTanFov, cam.near, cam.far);
 
-    var MVP = mult(proj, view);
-    var MDL = identity();
-    var NM  = mat3Normal(MDL);
+    var mvpMatrix = mult(proj, view);
+    var modelMatrix = identity();
+    var normalMatrix  = mat3Normal(modelMatrix);
 
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-    gl.uniformMatrix4fv(uMVP, false, new Float32Array(MVP));
-    gl.uniformMatrix4fv(uModel, false, new Float32Array(MDL));
-    gl.uniformMatrix3fv(uNM, false, NM);
-    gl.uniform1i(uMode, shadingMode);
-    gl.uniform3f(uLightPos, 0, 4.5, 0);
-    gl.uniform3f(uEye, cam.x, cam.y, cam.z);
-    gl.uniform1f(uTime, now * 0.001);
+    gl.uniformMatrix4fv(uniformMvp, false, new Float32Array(mvpMatrix));
+    gl.uniformMatrix4fv(uniformModel, false, new Float32Array(modelMatrix));
+    gl.uniformMatrix3fv(uniformNormalMatrix, false, normalMatrix);
+    gl.uniform1i(uniformMode, shadingMode);
+    gl.uniform3f(uniformLightPos, 0, 4.5, 0);
+    gl.uniform3f(uniformEye, cam.x, cam.y, cam.z);
+    gl.uniform1f(uniformTime, now * 0.001);
 
     for (var i = 0; i < batches.length; i++) {
         drawBatch(batches[i]);
@@ -449,23 +449,23 @@ function render(now) {
         gl.disable(gl.DEPTH_TEST);
         gl.clear(gl.DEPTH_BUFFER_BIT);
 
-        var gunM = identity();
-        gunM = mult(gunM, translate(0.35, -0.50, -0.70));
-        gunM = mult(gunM, rotateZ(0));
-        gunM = mult(gunM, rotateX(0));
-        gunM = mult(gunM, rotateY(4));
-        gunM = mult(gunM, scalem(1.10, 1.10, 1.10));
+        var gunModelMatrix = identity();
+        gunModelMatrix = mult(gunModelMatrix, translate(0.35, -0.50, -0.70));
+        gunModelMatrix = mult(gunModelMatrix, rotateZ(0));
+        gunModelMatrix = mult(gunModelMatrix, rotateX(0));
+        gunModelMatrix = mult(gunModelMatrix, rotateY(4));
+        gunModelMatrix = mult(gunModelMatrix, scalem(1.10, 1.10, 1.10));
         
-        var gunProj = frustum(-0.13 * asp, 0.13 * asp, -0.13, 0.13, 0.13, 10.0);
-        var gunMVP  = mult(gunProj, gunM);
-        var gunNM   = mat3Normal(gunM);
+        var gunProjection = frustum(-0.13 * aspectRatio, 0.13 * aspectRatio, -0.13, 0.13, 0.13, 10.0);
+        var gunMvpMatrix  = mult(gunProjection, gunModelMatrix);
+        var gunNormalMatrix   = mat3Normal(gunModelMatrix);
 
-        gl.uniformMatrix4fv(uMVP, false, new Float32Array(gunMVP));
-        gl.uniformMatrix4fv(uModel, false, new Float32Array(gunM));
-        gl.uniformMatrix3fv(uNM, false, gunNM);
-        gl.uniform1i(uMode, shadingMode === 0 ? 0 : 2);
-        gl.uniform3f(uLightPos, 0.5, 2.0, 1.0);
-        gl.uniform3f(uEye, 0, 0, 0);
+        gl.uniformMatrix4fv(uniformMvp, false, new Float32Array(gunMvpMatrix));
+        gl.uniformMatrix4fv(uniformModel, false, new Float32Array(gunModelMatrix));
+        gl.uniformMatrix3fv(uniformNormalMatrix, false, gunNormalMatrix);
+        gl.uniform1i(uniformMode, shadingMode === 0 ? 0 : 2);
+        gl.uniform3f(uniformLightPos, 0.5, 2.0, 1.0);
+        gl.uniform3f(uniformEye, 0, 0, 0);
 
         drawBatch(gunBatch);
 
@@ -495,7 +495,6 @@ window.onload = function init() {
     gl = WebGLUtils.setupWebGL(canvas);
 
     if (!gl) { alert("WebGL isn't available"); return; }
-    gl.getExtension('OES_standard_derivatives');
 
     function resizeCanvas() {
         canvas.width  = window.innerWidth;
@@ -511,17 +510,17 @@ window.onload = function init() {
     program = initShaders(gl, "vertex-shader", "fragment-shader");
     gl.useProgram(program);
 
-    aPos = gl.getAttribLocation(program, 'aPos');
-    aNorm = gl.getAttribLocation(program, 'aNorm');
-    aCol = gl.getAttribLocation(program, 'aCol');
+    attribPos = gl.getAttribLocation(program, 'aPos');
+    attribNorm = gl.getAttribLocation(program, 'aNorm');
+    attribCol = gl.getAttribLocation(program, 'aCol');
 
-    uMVP = gl.getUniformLocation(program, 'uMVP');
-    uModel = gl.getUniformLocation(program, 'uModel');
-    uNM = gl.getUniformLocation(program, 'uNM');
-    uMode = gl.getUniformLocation(program, 'uMode');
-    uLightPos = gl.getUniformLocation(program, 'uLightPos');
-    uEye = gl.getUniformLocation(program, 'uEye');
-    uTime = gl.getUniformLocation(program, 'uTime');
+    uniformMvp = gl.getUniformLocation(program, 'uMVP');
+    uniformModel = gl.getUniformLocation(program, 'uModel');
+    uniformNormalMatrix = gl.getUniformLocation(program, 'uNM');
+    uniformMode = gl.getUniformLocation(program, 'uMode');
+    uniformLightPos = gl.getUniformLocation(program, 'uLightPos');
+    uniformEye = gl.getUniformLocation(program, 'uEye');
+    uniformTime = gl.getUniformLocation(program, 'uTime');
 
     buildScene();
     buildGun();
@@ -542,8 +541,8 @@ window.onload = function init() {
         cam.pitch  = Math.max(-1.55, Math.min(1.55, cam.pitch));
     });
     document.addEventListener('keydown', function(e) {
-        if (e.code === 'Digit1') setSh(0);
-        if (e.code === 'Digit2') setSh(1);
-        if (e.code === 'Digit3') setSh(2);
+        if (e.code === 'Digit1') setShadingMode(0);
+        if (e.code === 'Digit2') setShadingMode(1);
+        if (e.code === 'Digit3') setShadingMode(2);
     });
 };
