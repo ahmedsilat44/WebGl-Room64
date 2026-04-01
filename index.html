@@ -118,9 +118,9 @@
 
         void main() {
             gl_Position = uMVP * vec4(aPos, 1.0);
-            vWorldPos   = (uModel * vec4(aPos, 1.0)).xyz;
-            vNorm       = normalize(uNM * aNorm);
-            vCol        = aCol;
+            vWorldPos = (uModel * vec4(aPos, 1.0)).xyz;
+            vNorm = normalize(uNM * aNorm);
+            vCol = aCol;
         }
     </script>
 
@@ -135,18 +135,33 @@
         uniform int  uMode;
         uniform vec3 uLightPos;
         uniform vec3 uEye;
+        uniform float uTime;
 
         const vec3 DIR_LIGHT = normalize(vec3(0.3, 0.8, 0.4));
+        const vec3 LAVA_BASE = vec3(0.72, 0.28, 0.01);
+
+        vec3 applyLavaAnimation(vec3 litCol) 
+        {
+            float d = length(vCol - LAVA_BASE);
+            float mask = 1.0 - smoothstep(0.0, 0.12, d);
+
+            float waveA = sin(vWorldPos.x * 5.2 + uTime * 3.8);
+            float waveB = sin(vWorldPos.z * 4.6 - uTime * 2.7);
+            float flicker = 0.5 + 0.5 * sin(uTime * 11.0 + vWorldPos.x * 13.0);
+            float flow = 0.5 + 0.5 * (0.6 * waveA + 0.4 * waveB);
+
+            vec3 emissive = vec3(0.40, 0.12, 0.01) * (0.35 + 0.65 * flow + 0.25 * flicker);
+            vec3 animated = litCol * (0.85 + 0.35 * flow) + emissive;
+            return mix(litCol, animated, mask);
+        }
 
         void main() {
             if (uMode == 0) {
-                // Wireframe
-                gl_FragColor = vec4(min(vCol * 1.6, vec3(1.0)), 1.0);
+                vec3 col = min(vCol * 1.6, vec3(1.0));
+                col = applyLavaAnimation(col);
+                gl_FragColor = vec4(min(col, vec3(1.0)), 1.0);
 
             } else if (uMode == 1) {
-                // TRUE flat shading: reconstruct face normal from
-                // screen-space derivatives so each triangle gets
-                // one constant normal (faceted look).
                 vec3 dx = dFdx(vWorldPos);
                 vec3 dy = dFdy(vWorldPos);
                 vec3 N  = normalize(cross(dx, dy));
@@ -154,36 +169,26 @@
                 float dif = max(dot(N, DIR_LIGHT), 0.0);
                 float fill = max(dot(N, vec3(0.0, 1.0, 0.0)), 0.0) * 0.18;
                 vec3 col = vCol * (0.30 + 0.70 * dif + fill);
+                col = applyLavaAnimation(col);
                 gl_FragColor = vec4(min(col, vec3(1.0)), 1.0);
 
             } else {
-                // Smooth Phong shading: interpolated normals +
-                // directional light + point light + specular.
                 vec3 N = normalize(vNorm);
-
-                // Directional diffuse
                 float dif1 = max(dot(N, DIR_LIGHT), 0.0);
-
-                // Point light from room centre for local variation
                 vec3  L2   = uLightPos - vWorldPos;
                 float dist = length(L2);
                 L2 = L2 / dist;
                 float att  = 1.0 / (1.0 + 0.045 * dist + 0.007 * dist * dist);
                 float dif2 = max(dot(N, L2), 0.0) * att * 0.55;
-
-                // Up-fill
                 float fill = max(dot(N, vec3(0.0, 1.0, 0.0)), 0.0) * 0.15;
-
-                // Specular (directional)
                 vec3  V   = normalize(uEye - vWorldPos);
                 vec3  R   = reflect(-DIR_LIGHT, N);
                 float spe = pow(max(dot(V, R), 0.0), 48.0) * 0.40;
-
-                // Specular (point light)
                 vec3  R2   = reflect(-L2, N);
                 float spe2 = pow(max(dot(V, R2), 0.0), 48.0) * 0.25 * att;
 
                 vec3 col = vCol * (0.25 + 0.60 * dif1 + dif2 + fill) + vec3(spe + spe2);
+                col = applyLavaAnimation(col);
                 gl_FragColor = vec4(min(col, vec3(1.0)), 1.0);
             }
         }
@@ -226,7 +231,6 @@
             <tr><td>&#8593; / &#8595;</td><td>FOV zoom in / out</td></tr>
             <tr><td>&#8592; / &#8594;</td><td>Yaw (keyboard)</td></tr>
             <tr><td>[ / ]</td>         <td>Near / Far plane</td></tr>
-            <tr><td>Z / X</td>         <td>Left / right view shift</td></tr>
             <tr><td>1 / 2 / 3</td>     <td>Wireframe / Flat / Smooth</td></tr>
         </table>
         <button id="gobtn" onclick="startGame()">[ CLICK TO ENTER ]</button>

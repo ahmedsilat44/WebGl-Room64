@@ -69,7 +69,6 @@ function map_point(P, Q, A, B, X) {
     return lerp(A, B, alpha);
 }
 
-// Flatten an array of vec2/vec3/vec4 into a Float32Array
 function flatten(v) {
     if (v.length === 0) return new Float32Array(0);
     if (typeof v[0] === 'number') return new Float32Array(v);
@@ -83,7 +82,6 @@ function flatten(v) {
     return new Float32Array(floats);
 }
 
-// Dot product
 function dot(u, v) {
     var sum = 0.0;
     for (var i = 0; i < u.length; i++) {
@@ -92,7 +90,6 @@ function dot(u, v) {
     return sum;
 }
 
-// Cross product (vec3)
 function cross(u, v) {
     return vec3(
         u[1]*v[2] - u[2]*v[1],
@@ -101,12 +98,10 @@ function cross(u, v) {
     );
 }
 
-// Length of a vector
 function length(v) {
     return Math.sqrt(dot(v, v));
 }
 
-// Normalize a vector
 function normalize(v) {
     var len = length(v);
     if (len < 0.00001) return v;
@@ -117,7 +112,6 @@ function normalize(v) {
     return result;
 }
 
-// Subtract two vectors
 function subtract(u, v) {
     var result = [];
     for (var i = 0; i < u.length; i++) {
@@ -126,7 +120,6 @@ function subtract(u, v) {
     return result;
 }
 
-// Add two vectors
 function add(u, v) {
     var result = [];
     for (var i = 0; i < u.length; i++) {
@@ -135,7 +128,6 @@ function add(u, v) {
     return result;
 }
 
-// Scale a vector
 function scale(s, v) {
     var result = [];
     for (var i = 0; i < v.length; i++) {
@@ -144,12 +136,10 @@ function scale(s, v) {
     return result;
 }
 
-// Negate a vector
 function negate(v) {
     return scale(-1, v);
 }
 
-// Identity matrix (4x4 column-major flat array for WebGL)
 function identity() {
     return [
         1, 0, 0, 0,
@@ -159,7 +149,6 @@ function identity() {
     ];
 }
 
-// Rotation about X axis (angle in degrees), column-major
 function rotateX(angle) {
     var r = angle * Math.PI / 180.0;
     var c = Math.cos(r), s = Math.sin(r);
@@ -171,7 +160,6 @@ function rotateX(angle) {
     ];
 }
 
-// Rotation about Y axis (angle in degrees), column-major
 function rotateY(angle) {
     var r = angle * Math.PI / 180.0;
     var c = Math.cos(r), s = Math.sin(r);
@@ -183,7 +171,6 @@ function rotateY(angle) {
     ];
 }
 
-// Rotation about Z axis (angle in degrees), column-major
 function rotateZ(angle) {
     var r = angle * Math.PI / 180.0;
     var c = Math.cos(r), s = Math.sin(r);
@@ -195,7 +182,6 @@ function rotateZ(angle) {
     ];
 }
 
-// Multiply two 4x4 matrices (column-major flat arrays)
 function mult(a, b) {
     var result = new Array(16);
     for (var i = 0; i < 4; i++) {
@@ -210,7 +196,6 @@ function mult(a, b) {
     return result;
 }
 
-// Scale matrix (column-major)
 function scalem(sx, sy, sz) {
     return [
         sx, 0, 0, 0,
@@ -220,7 +205,6 @@ function scalem(sx, sy, sz) {
     ];
 }
 
-// Translation matrix (column-major)
 function translate(tx, ty, tz) {
     return [
         1, 0, 0, 0,
@@ -230,7 +214,6 @@ function translate(tx, ty, tz) {
     ];
 }
 
-// Perspective projection (column-major)
 function perspective(fovy, aspect, near, far) {
     var f = 1.0 / Math.tan(fovy * Math.PI / 360.0);
     var d = far - near;
