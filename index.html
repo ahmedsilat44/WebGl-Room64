@@ -179,15 +179,15 @@
                 float dist = length(L2);
                 L2 = L2 / dist;
                 float att  = 1.0 / (1.0 + 0.045 * dist + 0.007 * dist * dist);
-                float dif2 = max(dot(N, L2), 0.0) * att * 0.55;
-                float fill = max(dot(N, vec3(0.0, 1.0, 0.0)), 0.0) * 0.15;
+                float dif2 = max(dot(N, L2), 0.0) * att * 0.75;
+                float fill = max(dot(N, vec3(0.0, 1.0, 0.0)), 0.0) * 0.20;
                 vec3  V   = normalize(uEye - vWorldPos);
                 vec3  R   = reflect(-DIR_LIGHT, N);
-                float spe = pow(max(dot(V, R), 0.0), 48.0) * 0.40;
+                float spe = pow(max(dot(V, R), 0.0), 48.0) * 0.65;
                 vec3  R2   = reflect(-L2, N);
-                float spe2 = pow(max(dot(V, R2), 0.0), 48.0) * 0.25 * att;
+                float spe2 = pow(max(dot(V, R2), 0.0), 48.0) * 0.45 * att;
 
-                vec3 col = vCol * (0.25 + 0.60 * dif1 + dif2 + fill) + vec3(spe + spe2);
+                vec3 col = vCol * (0.20 + 0.75 * dif1 + dif2 + fill) + vec3(spe + spe2);
                 col = applyLavaAnimation(col);
                 gl_FragColor = vec4(min(col, vec3(1.0)), 1.0);
             }
@@ -213,25 +213,25 @@
     <div id="crosshair">+</div>
 
     <div id="bar">
-        <button class="sbtn"    onclick="setSh(0)">WIREFRAME</button>
+        <button class="sbtn" onclick="setSh(0)">WIREFRAME</button>
         <button class="sbtn on" onclick="setSh(1)">FLAT</button>
-        <button class="sbtn"    onclick="setSh(2)">SMOOTH</button>
+        <button class="sbtn" onclick="setSh(2)">SMOOTH</button>
     </div>
 
     <div id="overlay">
         <h1>DOOM64</h1>
         <h2>CS 440 &middot; VIRTUAL WORLDS</h2>
         <table>
-            <tr><td>W A S D</td>       <td>Move / Strafe</td></tr>
-            <tr><td>MOUSE</td>         <td>Look (Yaw + Pitch)</td></tr>
-            <tr><td>Q / E</td>         <td>Roll left / right</td></tr>
-            <tr><td>R / F</td>         <td>Fly up / down</td></tr>
-            <tr><td>SHIFT</td>         <td>Sprint</td></tr>
+            <tr><td>W A S D</td><td>Move / Strafe</td></tr>
+            <tr><td>MOUSE</td><td>Look (Yaw + Pitch)</td></tr>
+            <tr><td>Q / E</td><td>Roll left / right</td></tr>
+            <tr><td>R / F</td><td>Fly up / down</td></tr>
+            <tr><td>SHIFT</td><td>Sprint</td></tr>
             <tr><td>, &nbsp;/&nbsp; .</td><td>Speed down / up</td></tr>
             <tr><td>&#8593; / &#8595;</td><td>FOV zoom in / out</td></tr>
             <tr><td>&#8592; / &#8594;</td><td>Yaw (keyboard)</td></tr>
-            <tr><td>[ / ]</td>         <td>Near / Far plane</td></tr>
-            <tr><td>1 / 2 / 3</td>     <td>Wireframe / Flat / Smooth</td></tr>
+            <tr><td>[ / ]</td><td>Near / Far plane</td></tr>
+            <tr><td>1 / 2 / 3</td><td>Wireframe / Flat / Smooth</td></tr>
         </table>
         <button id="gobtn" onclick="startGame()">[ CLICK TO ENTER ]</button>
     </div>

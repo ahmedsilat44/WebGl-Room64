@@ -31,16 +31,16 @@ var RoomWidth = 30, RoomDepth = 40, WallHeight = 6;
 var halfWidth = 15, halfDepth = 20;
 
 var cam = {
-    x: 0,   y: 2.2,  z: 17,
+    x: 0, y: 2.2, z: 17,
     yaw: 0, pitch: 0, roll: 0,
     fov: 75, near: 0.15, far: 250,
     speed: 5
 };
 
 var BOUNDS = {
-    minX: -halfWidth + 0.4,  maxX:  halfWidth - 0.4,
-    minZ: -halfDepth + 0.4,  maxZ:  halfDepth + 18 - 0.4,
-    minY:  1.6,              maxY:  WallHeight - 0.4
+    minX: -halfWidth + 0.4, maxX:  halfWidth - 0.4,
+    minZ: -halfDepth + 0.4, maxZ:  halfDepth + 18 - 0.4,
+    minY:  1.6, maxY:  WallHeight - 0.4
 };
 var HALL = {
     halfWidth: 3.5,
@@ -55,10 +55,10 @@ var lastTime = 0, fps = 0, fpsAcc = 0, fpsCnt = 0;
 
 function frustum(l, r, b, t, n, f) {
     var result = [0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0];
-    result[0]  =  (2 * n) / (r - l);
-    result[5]  =  (2 * n) / (t - b);
-    result[8]  =  (r + l) / (r - l);
-    result[9]  =  (t + b) / (t - b);
+    result[0] = (2 * n) / (r - l);
+    result[5] = (2 * n) / (t - b);
+    result[8] = (r + l) / (r - l);
+    result[9] = (t + b) / (t - b);
     result[10] = -(f + n) / (f - n);
     result[11] = -1.0;
     result[14] = -(2 * f * n) / (f - n);
@@ -111,7 +111,7 @@ function flushBatch() {
 
     batches.push({
         posB: posB, norB: norB, colB: colB,
-        idxB: idxB,  cnt:  gI.length,
+        idxB: idxB, cnt: gI.length,
         wIdxB: wIdxB, wcnt: wireArr.length
     });
 
@@ -131,7 +131,7 @@ function addQuad(p0, p1, p2, p3, col) {
         gN.push(n[0], n[1], n[2]);
         gC.push(col[0], col[1], col[2]);
     }
-    gI.push(gBase, gBase+1, gBase+2,  gBase, gBase+2, gBase+3);
+    gI.push(gBase, gBase+1, gBase+2, gBase, gBase+2, gBase+3);
     gBase += 4;
 }
 
@@ -154,10 +154,10 @@ function addBox(x, y, z, W, H, D, sideCol, topCol, botCol) {
     var bc = botCol || sc;
     var x1 = x+W, y1 = y+H, z1 = z+D;
 
-    addQuad([x,y,z1],[x,y,z],  [x1,y,z],  [x1,y,z1], bc);
+    addQuad([x,y,z1],[x,y,z], [x1,y,z],  [x1,y,z1], bc);
     addQuad([x,y1,z],[x,y1,z1],[x1,y1,z1],[x1,y1,z], tc);
     addQuad([x,y,z1],[x1,y,z1],[x1,y1,z1],[x,y1,z1], sc);
-    addQuad([x1,y,z],[x,y,z],  [x,y1,z],  [x1,y1,z], sc);
+    addQuad([x1,y,z],[x,y,z], [x,y1,z],  [x1,y1,z], sc);
     addQuad([x,y,z], [x,y,z1], [x,y1,z1], [x,y1,z],  sc);
     addQuad([x1,y,z1],[x1,y,z],[x1,y1,z],[x1,y1,z1], sc);
 }
@@ -213,14 +213,14 @@ function buildScene() {
     }
     var columnPositions = [
         [-9, -14], [ 9, -14],
-        [-9,  -4], [ 9,  -4],
-        [-9,   6], [ 9,   6],
-        [-5,  15], [ 5,  15]
+        [-9, -4], [ 9, -4],
+        [-9, 6], [ 9, 6],
+        [-5, 15], [ 5, 15]
     ];
     for (var ci = 0; ci < columnPositions.length; ci++) {
         var cx = columnPositions[ci][0], cz = columnPositions[ci][1];
-        addBox(cx-0.9,  0,              cz-0.9,  1.8, 0.28, 1.8, C.cap, C.cap, C.cap);
-        addBox(cx-0.55, 0.28,           cz-0.55, 1.1, WallHeight-0.56, 1.1, C.col);
+        addBox(cx-0.9,  0, cz-0.9,  1.8, 0.28, 1.8, C.cap, C.cap, C.cap);
+        addBox(cx-0.55, 0.28, cz-0.55, 1.1, WallHeight-0.56, 1.1, C.col);
         addBox(cx-0.9,  WallHeight-0.28, cz-0.9, 1.8, 0.28, 1.8, C.cap, C.cap, C.cap);
     }
     var LX = 0, LZ = 5;
@@ -277,10 +277,10 @@ function buildScene() {
 
     flushBatch();
     var columnPositions2 = [
-        [-9, -14], [ 9, -14],
-        [-9,  -4], [ 9,  -4],
-        [-9,   6], [ 9,   6],
-        [-5,  15], [ 5,  15]
+        [-9, -14], [9, -14],
+        [-9, -4], [9, -4],
+        [-9, 6], [9, 6],
+        [-5, 15], [5, 15]
     ];
     var barrelCount = 3;
     var placed = 0;
@@ -316,19 +316,19 @@ function buildGun() {
     var wood2  = [0.35, 0.18, 0.06];
     var black  = [0.05, 0.05, 0.05];
     var steel  = [0.55, 0.55, 0.60];
-    addBox(-0.04, 0.02, -0.80,  0.08, 0.07, 0.82, metal, metal2, metal);
-    addBox(-0.012, 0.09, -0.78,  0.024, 0.018, 0.76, steel, steel, steel);
-    addBox(-0.014, 0.108, -0.77,  0.028, 0.020, 0.028, steel, steel, steel);
-    addBox(-0.052, -0.01, -0.60,  0.104, 0.055, 0.24, wood2, wood2, wood2);
-    addBox(-0.060, -0.04, -0.04,  0.12, 0.14, 0.30, metal, metal2, metal);
-    addBox( 0.058, -0.01, -0.03,  0.008, 0.07, 0.16, black, black, black);
-    addBox(-0.028, -0.10,  0.00,  0.056, 0.010, 0.14, black, black, black);
-    addBox(-0.028, -0.18,  0.00,  0.056, 0.080, 0.01, black, black, black);
-    addBox(-0.028, -0.18,  0.13,  0.056, 0.080, 0.01, black, black, black);
-    addBox(-0.038, -0.42,  0.02,  0.076, 0.30, 0.09, wood, wood, wood);
-    addBox(-0.048,  0.00,  0.26,  0.096, 0.09, 0.28, wood, wood, wood);
-    addBox(-0.052, -0.01,  0.54,  0.104, 0.10, 0.018, metal, metal, metal);
-    addBox(-0.042,  0.018, -0.82,  0.084, 0.074, 0.018, black, black, black);
+    addBox(-0.04, 0.02, -0.80, 0.08, 0.07, 0.82, metal, metal2, metal);
+    addBox(-0.012, 0.09, -0.78, 0.024, 0.018, 0.76, steel, steel, steel);
+    addBox(-0.014, 0.108, -0.77, 0.028, 0.020, 0.028, steel, steel, steel);
+    addBox(-0.052, -0.01, -0.60, 0.104, 0.055, 0.24, wood2, wood2, wood2);
+    addBox(-0.060, -0.04, -0.04, 0.12, 0.14, 0.30, metal, metal2, metal);
+    addBox( 0.058, -0.01, -0.03, 0.008, 0.07, 0.16, black, black, black);
+    addBox(-0.028, -0.10,  0.00, 0.056, 0.010, 0.14, black, black, black);
+    addBox(-0.028, -0.18,  0.00, 0.056, 0.080, 0.01, black, black, black);
+    addBox(-0.028, -0.18,  0.13, 0.056, 0.080, 0.01, black, black, black);
+    addBox(-0.038, -0.42,  0.02, 0.076, 0.30, 0.09, wood, wood, wood);
+    addBox(-0.048,  0.00,  0.26, 0.096, 0.09, 0.28, wood, wood, wood);
+    addBox(-0.052, -0.01,  0.54, 0.104, 0.10, 0.018, metal, metal, metal);
+    addBox(-0.042,  0.018, -0.82, 0.084, 0.074, 0.018, black, black, black);
 
     flushBatch();
     gunBatch = batches.pop();
@@ -416,16 +416,16 @@ function render(now) {
 
     update(dt);
     var RAD = 180.0 / Math.PI;
-    var T   = translate(-cam.x, -cam.y, -cam.z);
-    var Ry  = rotateY(cam.yaw * RAD);
-    var Rx  = rotateX(cam.pitch * RAD);
-    var Rz  = rotateZ(cam.roll * RAD);
+    var T = translate(-cam.x, -cam.y, -cam.z);
+    var Ry = rotateY(cam.yaw * RAD);
+    var Rx = rotateX(cam.pitch * RAD);
+    var Rz = rotateZ(cam.roll * RAD);
     var view = mult(Rz, mult(Rx, mult(Ry, T)));
-    var asp   = gl.canvas.width / gl.canvas.height;
-    var fovR  = cam.fov * Math.PI / 180;
+    var asp = gl.canvas.width / gl.canvas.height;
+    var fovR = cam.fov * Math.PI / 180;
     var tHalf = cam.near * Math.tan(fovR / 2);
     var wHalf = tHalf * asp;
-    var proj  = frustum(-wHalf, wHalf, -tHalf, tHalf, cam.near, cam.far);
+    var proj = frustum(-wHalf, wHalf, -tHalf, tHalf, cam.near, cam.far);
 
     var MVP = mult(proj, view);
     var MDL = identity();
@@ -433,9 +433,9 @@ function render(now) {
 
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-    gl.uniformMatrix4fv(uMVP,   false, new Float32Array(MVP));
+    gl.uniformMatrix4fv(uMVP, false, new Float32Array(MVP));
     gl.uniformMatrix4fv(uModel, false, new Float32Array(MDL));
-    gl.uniformMatrix3fv(uNM,    false, NM);
+    gl.uniformMatrix3fv(uNM, false, NM);
     gl.uniform1i(uMode, shadingMode);
     gl.uniform3f(uLightPos, 0, 4.5, 0);
     gl.uniform3f(uEye, cam.x, cam.y, cam.z);
@@ -460,9 +460,9 @@ function render(now) {
         var gunMVP  = mult(gunProj, gunM);
         var gunNM   = mat3Normal(gunM);
 
-        gl.uniformMatrix4fv(uMVP,   false, new Float32Array(gunMVP));
+        gl.uniformMatrix4fv(uMVP, false, new Float32Array(gunMVP));
         gl.uniformMatrix4fv(uModel, false, new Float32Array(gunM));
-        gl.uniformMatrix3fv(uNM,    false, gunNM);
+        gl.uniformMatrix3fv(uNM, false, gunNM);
         gl.uniform1i(uMode, shadingMode === 0 ? 0 : 2);
         gl.uniform3f(uLightPos, 0.5, 2.0, 1.0);
         gl.uniform3f(uEye, 0, 0, 0);
@@ -511,17 +511,17 @@ window.onload = function init() {
     program = initShaders(gl, "vertex-shader", "fragment-shader");
     gl.useProgram(program);
 
-    aPos  = gl.getAttribLocation(program, 'aPos');
+    aPos = gl.getAttribLocation(program, 'aPos');
     aNorm = gl.getAttribLocation(program, 'aNorm');
-    aCol  = gl.getAttribLocation(program, 'aCol');
+    aCol = gl.getAttribLocation(program, 'aCol');
 
-    uMVP      = gl.getUniformLocation(program, 'uMVP');
-    uModel    = gl.getUniformLocation(program, 'uModel');
-    uNM       = gl.getUniformLocation(program, 'uNM');
-    uMode     = gl.getUniformLocation(program, 'uMode');
+    uMVP = gl.getUniformLocation(program, 'uMVP');
+    uModel = gl.getUniformLocation(program, 'uModel');
+    uNM = gl.getUniformLocation(program, 'uNM');
+    uMode = gl.getUniformLocation(program, 'uMode');
     uLightPos = gl.getUniformLocation(program, 'uLightPos');
-    uEye      = gl.getUniformLocation(program, 'uEye');
-    uTime     = gl.getUniformLocation(program, 'uTime');
+    uEye = gl.getUniformLocation(program, 'uEye');
+    uTime = gl.getUniformLocation(program, 'uTime');
 
     buildScene();
     buildGun();
